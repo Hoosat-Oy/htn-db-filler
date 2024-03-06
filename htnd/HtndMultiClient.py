@@ -12,7 +12,7 @@ class HtndMultiClient(object):
 
     def __get_htnd(self):
         for k in self.htnds:
-            if k.is_utxo_indexed and k.is_synced:
+            if k.is_utxo_indexed:
                 return k
 
     async def initialize_all(self):
