@@ -22,9 +22,9 @@ DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0emessages.proto
 
 
 
-_HTNPADMESSAGE = DESCRIPTOR.message_types_by_name['KaspadMessage']
+_KASPADMESSAGE = DESCRIPTOR.message_types_by_name['KaspadMessage']
 KaspadMessage = _reflection.GeneratedProtocolMessageType('KaspadMessage', (_message.Message,), {
-  'DESCRIPTOR' : _HTNPADMESSAGE,
+  'DESCRIPTOR' : _KASPADMESSAGE,
   '__module__' : 'messages_pb2'
   # @@protoc_insertion_point(class_scope:protowire.KaspadMessage)
   })
@@ -35,9 +35,9 @@ _RPC = DESCRIPTOR.services_by_name['RPC']
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  DESCRIPTOR._serialized_options = b'Z$github.com/htnpanet/htnpad/protowire'
-  _HTNPADMESSAGE._serialized_start=52
-  _HTNPADMESSAGE._serialized_end=10629
+  DESCRIPTOR._serialized_options = b'Z$github.com/kaspanet/kaspad/protowire'
+  _KASPADMESSAGE._serialized_start=52
+  _KASPADMESSAGE._serialized_end=10629
   _P2P._serialized_start=10631
   _P2P._serialized_end=10711
   _RPC._serialized_start=10713

@@ -93,7 +93,6 @@ async def main():
 if __name__ == '__main__':
     tx_addr_mapping_updater = TxAddrMappingUpdater()
 
-
     # custom exception hook for thread
     def custom_hook(args):
         global tx_addr_mapping_updater

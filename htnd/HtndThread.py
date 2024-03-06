@@ -32,7 +32,7 @@ class HtndThread(object):
                                                          ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
                                                      ])
         else:
-            self.channel = grpc.insecure_channel(f'{htnpad_host}:{htnd_port}',
+            self.channel = grpc.insecure_channel(f'{htnd_host}:{htnd_port}',
                                                  compression=grpc.Compression.Gzip,
                                                  options=[
                                                      ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
