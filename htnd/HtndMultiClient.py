@@ -8,15 +8,15 @@ from htnd.HtndThread import HtndCommunicationError
 
 class HtndMultiClient(object):
     def __init__(self, hosts):
-        self.htnpads = [HtndClient(*h.split(":")) for h in hosts]
+        self.htnds = [HtndClient(*h.split(":")) for h in hosts]
 
     def __get_htnpad(self):
-        for k in self.htnpads:
+        for k in self.htnds:
             if k.is_utxo_indexed and k.is_synced:
                 return k
 
     async def initialize_all(self):
-        tasks = [asyncio.create_task(k.ping()) for k in self.htnpads]
+        tasks = [asyncio.create_task(k.ping()) for k in self.htnds]
 
         for t in tasks:
             await t
