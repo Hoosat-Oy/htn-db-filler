@@ -18,20 +18,20 @@ class HtndCommunicationError(Exception): pass
 # pipenv run python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. ./protos/rpc.proto ./protos/messages.proto ./protos/p2p.proto
 
 class HtndThread(object):
-    def __init__(self, htnd_host, htnd_port, async_thread=True):
+    def __init__(self, htnd_host, htdn_port, async_thread=True):
 
         self.htnd_host = htnd_host
-        self.htnd_port = htnd_port
+        self.htdn_port = htdn_port
 
         if async_thread:
-            self.channel = grpc.aio.insecure_channel(f'{htnd_host}:{htnd_port}',
+            self.channel = grpc.aio.insecure_channel(f'{htnd_host}:{htdn_port}',
                                                      compression=grpc.Compression.Gzip,
                                                      options=[
                                                          ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
                                                          ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
                                                      ])
         else:
-            self.channel = grpc.insecure_channel(f'{htnd_host}:{htnd_port}',
+            self.channel = grpc.insecure_channel(f'{htnd_host}:{htdn_port}',
                                                  compression=grpc.Compression.Gzip,
                                                  options=[
                                                      ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
@@ -70,7 +70,7 @@ class HtndThread(object):
             raise HtndCommunicationError(str(e))
 
     async def yield_cmd(self, cmd, params=None):
-        msg = HtndMessage()
+        msg = KaspadMessage()
         msg2 = getattr(msg, cmd)
         payload = params
 
@@ -85,7 +85,7 @@ class HtndThread(object):
         await self.__queue.get()
 
     def yield_cmd_sync(self, cmd, params=None):
-        msg = HtndMessage()
+        msg = KaspadMessage()
         msg2 = getattr(msg, cmd)
         payload = params
 

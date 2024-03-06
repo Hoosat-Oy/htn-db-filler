@@ -39,7 +39,7 @@ for i in range(100):
 if not htnd_hosts:
     raise Exception('Please set at least HTND_HOST_1 environment variable.')
 
-# create Kaspad client
+# create Htnd client
 client = HtndMultiClient(htnd_hosts)
 task_runner = None
 
@@ -92,6 +92,7 @@ async def main():
 
 if __name__ == '__main__':
     tx_addr_mapping_updater = TxAddrMappingUpdater()
+
 
     # custom exception hook for thread
     def custom_hook(args):

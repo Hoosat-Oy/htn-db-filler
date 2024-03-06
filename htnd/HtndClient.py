@@ -1,7 +1,10 @@
 # encoding: utf-8
+import asyncio
 
-from htnd.HtndThread import HtndThread
+from htnd.HtndThread import HtndThread, HtndCommunicationError
+import logging
 
+_logger = logging.getLogger(__name__)
 
 # pipenv run python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. ./protos/rpc.proto ./protos/messages.proto ./protos/p2p.proto
 
