@@ -20,7 +20,7 @@ CLUSTER_WAIT_SECONDS = 4
 
 class BlocksProcessor(object):
     """
-    BlocksProcessor polls kaspad for blocks and adds the meta information and it's transactions into database.
+    BlocksProcessor polls htnd for blocks and adds the meta information and it's transactions into database.
     """
 
     def __init__(self, client):
