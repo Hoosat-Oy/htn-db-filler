@@ -42,12 +42,12 @@ class TxAddrMappingUpdater(object):
             with session_maker() as s:
                 max_in = min(self.id_counter_inputs + LIMIT,
                              s.execute(
-                                 f"""SELECT id FROM transactions_inputs ORDER by id DESC LIMIT 1""")
+                                 text("""SELECT id FROM transactions_inputs ORDER by id DESC LIMIT 1"""))
                              .scalar() or 0)
 
                 max_out = min(self.id_counter_outputs + LIMIT,
                               s.execute(
-                                  f"""SELECT id FROM transactions_outputs ORDER by id DESC LIMIT 1""")
+                                  text("""SELECT id FROM transactions_outputs ORDER by id DESC LIMIT 1"""))
                               .scalar() or 0)
 
             try:
@@ -90,13 +90,13 @@ class TxAddrMappingUpdater(object):
 
     def get_last_block_time(self, start_block_time):
         with session_maker() as s:
-            result = s.execute(f"""SELECT
+            result = s.execute(text("""SELECT
                 transactions.block_time
                 
                 FROM transactions
                 WHERE transactions.block_time >= :blocktime
                  ORDER by transactions.block_time ASC
-                 LIMIT {LIMIT}""", {"blocktime": start_block_time}).all()
+                 LIMIT {LIMIT}"""), {"blocktime": start_block_time}).all()
 
         try:
             return result[-1][0]
@@ -106,7 +106,7 @@ class TxAddrMappingUpdater(object):
     def update_inputs(self, min_id: int, max_id: int):
         with session_maker() as s:
 
-            result = s.execute(f"""INSERT INTO tx_id_address_mapping (transaction_id, address, block_time)
+            result = s.execute(text("""INSERT INTO tx_id_address_mapping (transaction_id, address, block_time)
 
                 SELECT DISTINCT * FROM (
                     SELECT transactions_inputs.transaction_id,
@@ -125,7 +125,7 @@ class TxAddrMappingUpdater(object):
                     ) as distinct_query
                     
                  ON CONFLICT DO NOTHING
-                         RETURNING block_time;""", {"minId": min_id, "maxId": max_id})
+                         RETURNING block_time;"""), {"minId": min_id, "maxId": max_id})
 
             s.commit()
 
@@ -137,7 +137,7 @@ class TxAddrMappingUpdater(object):
 
     def update_outputs(self, min_id: int, max_id: int):
         with session_maker() as s:
-            result = s.execute(f"""
+            result = s.execute(text("""
             
                 INSERT INTO tx_id_address_mapping (transaction_id, address, block_time)
                 
@@ -148,7 +148,7 @@ class TxAddrMappingUpdater(object):
 				JOIN transactions ON transactions.transaction_id = sq.transaction_id)
                 
                  ON CONFLICT DO NOTHING
-                 RETURNING block_time;""", {"minId": min_id, "maxId": max_id})
+                 RETURNING block_time;"""), {"minId": min_id, "maxId": max_id})
 
             s.commit()
 
