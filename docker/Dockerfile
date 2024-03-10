@@ -4,7 +4,7 @@ ARG REPO_DIR
 
 EXPOSE 8000
 
-ENV KASPAD_HOST_1=n.seeder1.kaspad.net:16110
+ENV HTND_HOST_1=n.seeder1.htnd.net:16110
 ENV SQL_URI=postgresql+asyncpg://postgres:password@postgresql:5432/postgres
 ARG version
 ENV VERSION=$version

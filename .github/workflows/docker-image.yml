@@ -25,7 +25,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: supertypo/kaspa-db-filler:${{github.ref_name}}, supertypo/kaspa-db-filler:latest
+          tags: supertypo/htnd-db-filler:${{github.ref_name}}, supertypo/htnd-db-filler:latest
           file: ./docker/Dockerfile
           build-args: |
             version=${{github.ref_name}}
