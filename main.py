@@ -32,12 +32,12 @@ htnd_hosts = []
 
 for i in range(100):
     try:
-        htnd_hosts.append(os.environ[f"HTND_HOST_{i + 1}"].strip())
+        htnd_hosts.append(os.environ[f"HTND_HOSTS_{i + 1}"].strip())
     except KeyError:
         break
 
 if not htnd_hosts:
-    raise Exception('Please set at least HTND_HOST_1 environment variable.')
+    raise Exception('Please set at least HTND_HOSTS_1 environment variable.')
 
 # create Htnd client
 client = HtndMultiClient(htnd_hosts)
