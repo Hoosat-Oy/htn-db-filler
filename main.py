@@ -5,7 +5,7 @@ import os
 from BlocksProcessor import BlocksProcessor
 from VirtualChainProcessor import VirtualChainProcessor
 from dbsession import create_all, session_maker
-from kaspad.KaspadMultiClient import KaspadMultiClient
+from htnd.HtndMultiClient import HtndMultiClient
 from models.Transaction import Transaction
 
 logging.basicConfig(format="%(asctime)s::%(levelname)s::%(name)s::%(message)s",
@@ -24,19 +24,19 @@ _logger = logging.getLogger(__name__)
 # create tables in database
 create_all(drop=False)
 
-kaspad_hosts = []
+htnd_hosts = []
 
 for i in range(100):
     try:
-        kaspad_hosts.append(os.environ[f"HTND_HOST_{i + 1}"].strip())
+        htnd_hosts.append(os.environ[f"HTND_HOST_{i + 1}"].strip())
     except KeyError:
         break
 
-if not kaspad_hosts:
+if not htnd_hosts:
     raise Exception('Please set at least HTND_HOST_1 environment variable.')
 
 # create Kaspad client
-client = KaspadMultiClient(kaspad_hosts)
+client = HtndMultiClient(htnd_hosts)
 task_runner = None
 
 
