@@ -9,7 +9,7 @@ from TxAddrMappingUpdater import TxAddrMappingUpdater
 from VirtualChainProcessor import VirtualChainProcessor
 from dbsession import create_all
 from helper import KeyValueStore
-from kaspad.KaspadMultiClient import KaspadMultiClient
+from htnd.HtndMultiClient import HtndMultiClient
 
 logging.basicConfig(format="%(asctime)s::%(levelname)s::%(name)s::%(message)s",
                     level=logging.DEBUG if os.getenv("DEBUG", False) else logging.INFO,
@@ -28,28 +28,28 @@ _logger = logging.getLogger(__name__)
 _logger.info('Creating DBs if not exist.')
 create_all(drop=False)
 
-kaspad_hosts = []
+htnd_hosts = []
 
 for i in range(100):
     try:
-        kaspad_hosts.append(os.environ[f"KASPAD_HOST_{i + 1}"].strip())
+        htnd_hosts.append(os.environ[f"HTND_HOST_{i + 1}"].strip())
     except KeyError:
         break
 
-if not kaspad_hosts:
-    raise Exception('Please set at least KASPAD_HOST_1 environment variable.')
+if not htnd_hosts:
+    raise Exception('Please set at least HTND_HOST_1 environment variable.')
 
-# create Kaspad client
-client = KaspadMultiClient(kaspad_hosts)
+# create Htnd client
+client = HtndMultiClient(htnd_hosts)
 task_runner = None
 
 
 async def main():
-    # initialize kaspads
+    # initialize htnds
     await client.initialize_all()
 
     # wait for client to be synced
-    while client.kaspads[0].is_synced == False:
+    while client.htnds[0].is_synced == False:
         _logger.info('Client not synced yet. Waiting...')
         time.sleep(60)
 

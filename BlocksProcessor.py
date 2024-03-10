@@ -20,7 +20,7 @@ CLUSTER_WAIT_SECONDS = 4
 
 class BlocksProcessor(object):
     """
-    BlocksProcessor polls kaspad for blocks and adds the meta information and it's transactions into database.
+    BlocksProcessor polls htnd for blocks and adds the meta information and it's transactions into database.
     """
 
     def __init__(self, client):
@@ -133,7 +133,7 @@ class BlocksProcessor(object):
                                                            previous_outpoint_index=int(tx_in["previousOutpoint"].get(
                                                                "index", 0)),
                                                            signature_script=tx_in["signatureScript"],
-                                                           sig_op_count=tx_in.get("sigOpCount", 0)))
+                                                           sig_op_count=tx_in["sigOpCount"]))
             else:
                 # If the block if already in the Queue, merge the block_hashes.
                 self.txs[tx_id].block_hash = list(set(self.txs[tx_id].block_hash + [block_hash]))

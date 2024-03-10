@@ -12,26 +12,26 @@ from .messages_pb2 import KaspadMessage
 MAX_MESSAGE_LENGTH = 1024 * 1024 * 1024  # 1GB
 
 
-class KaspadCommunicationError(Exception): pass
+class HtndCommunicationError(Exception): pass
 
 
 # pipenv run python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. ./protos/rpc.proto ./protos/messages.proto ./protos/p2p.proto
 
-class KaspadThread(object):
-    def __init__(self, kaspad_host, kaspad_port, async_thread=True):
+class HtndThread(object):
+    def __init__(self, htnd_host, htnd_port, async_thread=True):
 
-        self.kaspad_host = kaspad_host
-        self.kaspad_port = kaspad_port
+        self.htnd_host = htnd_host
+        self.htnd_port = htnd_port
 
         if async_thread:
-            self.channel = grpc.aio.insecure_channel(f'{kaspad_host}:{kaspad_port}',
+            self.channel = grpc.aio.insecure_channel(f'{htnd_host}:{htnd_port}',
                                                      compression=grpc.Compression.Gzip,
                                                      options=[
                                                          ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
                                                          ('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
                                                      ])
         else:
-            self.channel = grpc.insecure_channel(f'{kaspad_host}:{kaspad_port}',
+            self.channel = grpc.insecure_channel(f'{htnd_host}:{htnd_port}',
                                                  compression=grpc.Compression.Gzip,
                                                  options=[
                                                      ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH),
@@ -57,7 +57,7 @@ class KaspadThread(object):
                     self.__queue.put_nowait("done")
                     return json_format.MessageToDict(resp)
             except grpc.aio._call.AioRpcError as e:
-                raise KaspadCommunicationError(str(e))
+                raise HtndCommunicationError(str(e))
 
     async def notify(self, command, params=None, callback_func=None):
         try:
@@ -67,7 +67,7 @@ class KaspadThread(object):
                     await callback_func(json_format.MessageToDict(resp))
 
         except (grpc.aio._call.AioRpcError, _MultiThreadedRendezvous) as e:
-            raise KaspadCommunicationError(str(e))
+            raise HtndCommunicationError(str(e))
 
     async def yield_cmd(self, cmd, params=None):
         msg = KaspadMessage()

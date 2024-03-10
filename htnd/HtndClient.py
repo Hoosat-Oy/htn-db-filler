@@ -1,17 +1,17 @@
 # encoding: utf-8
 import asyncio
 
-from kaspad.KaspadThread import KaspadThread, KaspadCommunicationError
+from htnd.HtndThread import HtndThread, HtndCommunicationError
 import logging
 
 _logger = logging.getLogger(__name__)
 
 # pipenv run python -m grpc_tools.protoc -I./protos --python_out=. --grpc_python_out=. ./protos/rpc.proto ./protos/messages.proto ./protos/p2p.proto
 
-class KaspadClient(object):
-    def __init__(self, kaspad_host, kaspad_port):
-        self.kaspad_host = kaspad_host
-        self.kaspad_port = kaspad_port
+class HtndClient(object):
+    def __init__(self, htnd_host, htnd_port):
+        self.htnd_host = htnd_host
+        self.htnd_port = htnd_port
         self.server_version = None
         self.is_utxo_indexed = None
         self.is_synced = None
@@ -33,11 +33,11 @@ class KaspadClient(object):
         _logger.debug(f'Request start: {command}, {params}')
         for i in range(1 + retry):
             try:
-                with KaspadThread(self.kaspad_host, self.kaspad_port) as t:
+                with HtndThread(self.htnd_host, self.htnd_port) as t:
                     resp = await t.request(command, params, wait_for_response=True, timeout=timeout)
                     _logger.debug('Request end')
                     return resp
-            except KaspadCommunicationError:
+            except HtndCommunicationError:
                 if i == retry:
                     _logger.debug('Retries done.')
                     raise
@@ -49,5 +49,5 @@ class KaspadClient(object):
                 raise
 
     async def notify(self, command, params, callback):
-        t = KaspadThread(self.kaspad_host, self.kaspad_port, async_thread=True)
+        t = HtndThread(self.htnd_host, self.htnd_port, async_thread=True)
         return await t.notify(command, params, callback)
