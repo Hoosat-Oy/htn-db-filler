@@ -15,12 +15,12 @@ _logger = logging.getLogger(__name__)
 
 CLUSTER_SIZE_INITIAL = 180 * 20
 CLUSTER_SIZE_SYNCED = 5
-CLUSTER_WAIT_SECONDS = 4
+CLUSTER_WAIT_SECONDS = 5
 
 
 class BlocksProcessor(object):
     """
-    BlocksProcessor polls htnd for blocks and adds the meta information and it's transactions into database.
+    BlocksProcessor polls kaspad for blocks and adds the meta information and it's transactions into database.
     """
 
     def __init__(self, client):
@@ -114,12 +114,11 @@ class BlocksProcessor(object):
                                               block_time=int(transaction["verboseData"]["blockTime"]))
 
                 # Add transactions output
-                for index, out in enumerate(transaction.get("outputs", [])):
+                for index, out in enumerate(transaction["outputs"]):
                     self.txs_output.append(TransactionOutput(transaction_id=transaction["verboseData"]["transactionId"],
                                                              index=index,
                                                              amount=out["amount"],
-                                                             script_public_key=out["scriptPublicKey"][
-                                                                 "scriptPublicKey"],
+                                                             script_public_key=out["scriptPublicKey"]["scriptPublicKey"],
                                                              script_public_key_address=out["verboseData"][
                                                                  "scriptPublicKeyAddress"],
                                                              script_public_key_type=out["verboseData"][
@@ -130,8 +129,8 @@ class BlocksProcessor(object):
                                                            index=index,
                                                            previous_outpoint_hash=tx_in["previousOutpoint"][
                                                                "transactionId"],
-                                                           previous_outpoint_index=int(tx_in["previousOutpoint"].get(
-                                                               "index", 0)),
+                                                           previous_outpoint_index=tx_in["previousOutpoint"].get(
+                                                               "index", 0),
                                                            signature_script=tx_in["signatureScript"],
                                                            sig_op_count=tx_in["sigOpCount"]))
             else:

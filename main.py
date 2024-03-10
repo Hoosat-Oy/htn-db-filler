@@ -1,15 +1,12 @@
 import asyncio
 import logging
 import os
-import threading
-import time
 
 from BlocksProcessor import BlocksProcessor
-from TxAddrMappingUpdater import TxAddrMappingUpdater
 from VirtualChainProcessor import VirtualChainProcessor
-from dbsession import create_all
-from helper import KeyValueStore
+from dbsession import create_all, session_maker
 from htnd.HtndMultiClient import HtndMultiClient
+from models.Transaction import Transaction
 
 logging.basicConfig(format="%(asctime)s::%(levelname)s::%(name)s::%(message)s",
                     level=logging.DEBUG if os.getenv("DEBUG", False) else logging.INFO,
@@ -25,7 +22,6 @@ logging.getLogger('sqlalchemy').setLevel(logging.ERROR)
 _logger = logging.getLogger(__name__)
 
 # create tables in database
-_logger.info('Creating DBs if not exist.')
 create_all(drop=False)
 
 htnd_hosts = []
@@ -39,27 +35,31 @@ for i in range(100):
 if not htnd_hosts:
     raise Exception('Please set at least HTND_HOSTS_1 environment variable.')
 
-# create Htnd client
+# create Kaspad client
 client = HtndMultiClient(htnd_hosts)
 task_runner = None
 
 
 async def main():
-    # initialize htnds
+    # initialize kaspads
     await client.initialize_all()
 
-    # wait for client to be synced
-    while client.htnds[0].is_synced == False:
-        _logger.info('Client not synced yet. Waiting...')
-        time.sleep(60)
-
     # find last acceptedTx's block hash, when restarting this tool
-    start_hash = KeyValueStore.get("vspc_last_start_hash")
+    with session_maker() as s:
+        try:
+            start_hash = s.query(Transaction) \
+                .where(Transaction.is_accepted == True) \
+                .order_by(Transaction.block_time.desc()) \
+                .limit(1) \
+                .first() \
+                .accepting_block_hash
+        except AttributeError:
+            start_hash = None
 
     # if there is nothing in the db, just get latest block.
     if not start_hash:
         daginfo = await client.request("getBlockDagInfoRequest", {})
-        start_hash = daginfo["getBlockDagInfoResponse"]["virtualParentHashes"][0]
+        start_hash = daginfo["getBlockDagInfoResponse"]["pruningPointHash"]
 
     _logger.info(f"Start hash: {start_hash}")
 
@@ -86,34 +86,17 @@ async def main():
         try:
             await bp.loop(start_hash)
         except Exception:
-            _logger.exception('Exception occured and script crashed..')
-            raise
+            _logger.exception('Exception occured and script crashed. Restart in 1m')
+            bp.synced = False
+            await asyncio.sleep(60)
+            with session_maker() as s:
+                start_hash = s.query(Transaction) \
+                    .where(Transaction.is_accepted == True) \
+                    .order_by(Transaction.block_time.desc()) \
+                    .limit(1) \
+                    .first() \
+                    .accepting_block_hash
 
 
 if __name__ == '__main__':
-    tx_addr_mapping_updater = TxAddrMappingUpdater()
-
-
-    # custom exception hook for thread
-    def custom_hook(args):
-        global tx_addr_mapping_updater
-        # report the failure
-        _logger.error(f'Thread failed: {args.exc_value}')
-        thread = args[3]
-
-        # check if TxAddrMappingUpdater
-        if thread.name == 'TxAddrMappingUpdater':
-            p = threading.Thread(target=tx_addr_mapping_updater.loop, daemon=True, name="TxAddrMappingUpdater")
-            p.start()
-            raise Exception("TxAddrMappingUpdater thread crashed.")
-
-
-    # set the exception hook
-    threading.excepthook = custom_hook
-
-    # run TxAddrMappingUpdater
-    # will be rerun
-    _logger.info('Starting updater thread now.')
-    threading.Thread(target=tx_addr_mapping_updater.loop, daemon=True, name="TxAddrMappingUpdater").start()
-    _logger.info('Starting main thread now.')
     asyncio.run(main())
