@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from dbsession import session_maker
 from helper import KeyValueStore
 from models.TxAddrMapping import TxAddrMapping
+from sqlalchemy import text
 
 LIMIT = 1000
 PRECONDITION_RETRIES = 2
