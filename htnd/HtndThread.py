@@ -70,7 +70,7 @@ class HtndThread(object):
             raise HtndCommunicationError(str(e))
 
     async def yield_cmd(self, cmd, params=None):
-        msg = HtndMessage()
+        msg = KaspadMessage()
         msg2 = getattr(msg, cmd)
         payload = params
 
