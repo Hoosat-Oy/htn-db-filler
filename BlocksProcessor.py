@@ -185,10 +185,6 @@ class BlocksProcessor(object):
         """
         Adds a block to the queue, which is used for adding a cluster
         """
-        if block["header"]["daaScore"] == None:
-            return
-        if block["header"]["blueScore"] == None:
-            return
         block_entity = Block(hash=block_hash,
                              accepted_id_merkle_root=block["header"]["acceptedIdMerkleRoot"],
                              difficulty=block["verboseData"]["difficulty"],
