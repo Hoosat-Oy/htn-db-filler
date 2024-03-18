@@ -158,38 +158,38 @@ class BlocksProcessor(object):
                     tx_ids_to_update.remove(tx_id)  # Remove from update list
 
         # **3. Update existing transactions (batched):**
-        with session_maker() as session:
-            MAX_BATCH_SIZE = 100  # Define batch size
-            num_updated = 0
-            while tx_ids_to_update:
-                batch = tx_ids_to_update[:MAX_BATCH_SIZE]
-                tx_ids_to_update = tx_ids_to_update[MAX_BATCH_SIZE:]
+        # with session_maker() as session:
+        #     MAX_BATCH_SIZE = 20  # Define batch size
+        #     num_updated = 0
+        #     while tx_ids_to_update:
+        #         batch = tx_ids_to_update[:MAX_BATCH_SIZE]
+        #         tx_ids_to_update = tx_ids_to_update[MAX_BATCH_SIZE:]
 
-                for tx_id in batch:
-                    tx_item = session.query(Transaction).get(tx_id)
-                    # Handle potential NoneType values:
-                    if tx_item and tx_id in self.txs and self.txs[tx_id]:
-                        # Update block_hash only if both objects are not None:
-                        tx_item.block_hash = list(
-                            set(tx_item.block_hash) | set(self.txs[tx_id].block_hash)
-                        )
-                        # ... (apply other patch updates as needed)
-                    else:
-                        # Log or handle cases where tx_item or self.txs[tx_id] is None
-                        _logger.warning(f"Transaction {tx_id} or its data is missing, skipping update")
+        #         for tx_id in batch:
+        #             tx_item = session.query(Transaction).get(tx_id)
+        #             # Handle potential NoneType values:
+        #             if tx_item and tx_id in self.txs and self.txs[tx_id]:
+        #                 # Update block_hash only if both objects are not None:
+        #                 tx_item.block_hash = list(
+        #                     set(tx_item.block_hash) | set(self.txs[tx_id].block_hash)
+        #                 )
+        #                 # ... (apply other patch updates as needed)
+        #             else:
+        #                 # Log or handle cases where tx_item or self.txs[tx_id] is None
+        #                 _logger.warning(f"Transaction {tx_id} or its data is missing, skipping update")
 
-                try:
-                    session.commit()
-                    num_updated += len(batch)
-                    _logger.debug(f'Updated {num_updated} transactions in database')
-                except IntegrityError:
-                    session.rollback()
-                    _logger.error(f'Error updating transactions')
-                    raise
+        #         try:
+        #             session.commit()
+        #             num_updated += len(batch)
+        #             _logger.debug(f'Updated {num_updated} transactions in database')
+        #         except IntegrityError:
+        #             session.rollback()
+        #             _logger.error(f'Error updating transactions')
+        #             raise
 
         # **4. Insert new transactions (batched):**
         with session_maker() as session:
-            MAX_BATCH_SIZE = 100  # Use consistent batch size
+            MAX_BATCH_SIZE = 20  # Use consistent batch size
             num_inserted = 0
             while tx_ids_to_insert:
                 batch = tx_ids_to_insert[:MAX_BATCH_SIZE]
@@ -210,7 +210,7 @@ class BlocksProcessor(object):
 
         # **5. Process transaction inputs (batched):**
         with session_maker() as session:
-            MAX_BATCH_SIZE = 100
+            MAX_BATCH_SIZE = 20
             num_inputs_added = 0
             for tx_input in self.txs_input:
                 session.add(tx_input)
@@ -237,7 +237,7 @@ class BlocksProcessor(object):
 
         # **6. Process transaction outputs (batched):**
         with session_maker() as session:
-            MAX_BATCH_SIZE = 100
+            MAX_BATCH_SIZE = 20
             num_outputs_added = 0
             for tx_output in self.txs_output:
                 session.add(tx_output)
