@@ -143,16 +143,60 @@ class BlocksProcessor(object):
         """
         Add all queued transactions and it's in- and outputs to database
         """
-        # First go through all transactions and check, if there are already added ones.
-        # If yes, update block_hash and remove from queue
-        tx_ids_to_add = list(self.txs.keys())
-        with session_maker() as session:
-            tx_items = session.query(Transaction).filter(Transaction.transaction_id.in_(tx_ids_to_add)).all()
-            for tx_item in tx_items:
-                tx_item.block_hash = list((set(tx_item.block_hash) | set(self.txs[tx_item.transaction_id].block_hash)))
-                self.txs.pop(tx_item.transaction_id)
 
-            session.commit()
+        # **1. Gather IDs for transactions needing updates or insertions:**
+        tx_ids_to_update = list(self.txs.keys())  # For existing transactions
+        tx_ids_to_insert = []  # Initialize for new transactions
+
+        # **2. Identify new transactions for insertion:**
+        for tx_id in tx_ids_to_update:
+            if not self.session.query(exists().where(Transaction.transaction_id == tx_id)).scalar():
+                tx_ids_to_insert.append(tx_id)
+                tx_ids_to_update.remove(tx_id)  # Remove from update list
+
+        # **3. Update existing transactions (batched):**
+        with session_maker() as session:
+            MAX_BATCH_SIZE = 100  # Define batch size
+            num_updated = 0
+            while tx_ids_to_update:
+                batch = tx_ids_to_update[:MAX_BATCH_SIZE]
+                tx_ids_to_update = tx_ids_to_update[MAX_BATCH_SIZE:]
+
+                # Apply patch updates within the batch:
+                for tx_id in batch:
+                    tx_item = session.query(Transaction).get(tx_id)
+                    tx_item.block_hash = list(set(tx_item.block_hash) | set(self.txs[tx_id].block_hash))
+                    # ... (apply other patch updates as needed)
+
+                try:
+                    session.commit()
+                    num_updated += len(batch)
+                    _logger.debug(f'Updated {num_updated} transactions in database')
+                except IntegrityError:
+                    session.rollback()
+                    _logger.error(f'Error updating transactions')
+                    raise
+
+        # **4. Insert new transactions (batched):**
+        with session_maker() as session:
+            MAX_BATCH_SIZE = 100  # Use consistent batch size
+            num_inserted = 0
+            while tx_ids_to_insert:
+                batch = tx_ids_to_insert[:MAX_BATCH_SIZE]
+                tx_ids_to_insert = tx_ids_to_insert[MAX_BATCH_SIZE:]
+
+                # Add new transactions from the batch:
+                for tx_id in batch:
+                    session.add(self.txs[tx_id])
+
+                try:
+                    session.commit()
+                    num_inserted += len(batch)
+                    _logger.debug(f'Inserted {num_inserted} transactions into database')
+                except IntegrityError:
+                    session.rollback()
+                    _logger.error(f'Error inserting transactions')
+                    raise
 
         # Go through all transactions which were not in the database and add now.
         MAX_TRANSACTION_ITEMS = 100
