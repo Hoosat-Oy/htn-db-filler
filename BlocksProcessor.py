@@ -150,10 +150,11 @@ class BlocksProcessor(object):
         tx_ids_to_insert = []  # Initialize for new transactions
 
         # **2. Identify new transactions for insertion:**
-        for tx_id in tx_ids_to_update:
-            if not self.session.query(exists().where(Transaction.transaction_id == tx_id)).scalar():
-                tx_ids_to_insert.append(tx_id)
-                tx_ids_to_update.remove(tx_id)  # Remove from update list
+        with session_maker() as session:
+            for tx_id in tx_ids_to_update:
+                if not session.query(exists().where(Transaction.transaction_id == tx_id)).scalar():
+                    tx_ids_to_insert.append(tx_id)
+                    tx_ids_to_update.remove(tx_id)  # Remove from update list
 
         # **3. Update existing transactions (batched):**
         with session_maker() as session:
