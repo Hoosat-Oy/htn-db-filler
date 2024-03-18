@@ -165,11 +165,18 @@ class BlocksProcessor(object):
                 batch = tx_ids_to_update[:MAX_BATCH_SIZE]
                 tx_ids_to_update = tx_ids_to_update[MAX_BATCH_SIZE:]
 
-                # Apply patch updates within the batch:
                 for tx_id in batch:
                     tx_item = session.query(Transaction).get(tx_id)
-                    tx_item.block_hash = list(set(tx_item.block_hash) | set(self.txs[tx_id].block_hash))
-                    # ... (apply other patch updates as needed)
+                    # Handle potential NoneType values:
+                    if tx_item and tx_id in self.txs and self.txs[tx_id]:
+                        # Update block_hash only if both objects are not None:
+                        tx_item.block_hash = list(
+                            set(tx_item.block_hash) | set(self.txs[tx_id].block_hash)
+                        )
+                        # ... (apply other patch updates as needed)
+                    else:
+                        # Log or handle cases where tx_item or self.txs[tx_id] is None
+                        _logger.warning(f"Transaction {tx_id} or its data is missing, skipping update")
 
                 try:
                     session.commit()
