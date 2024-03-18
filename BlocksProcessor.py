@@ -4,7 +4,8 @@ import asyncio
 import logging
 from datetime import datetime
 
-from sqlalchemy.exc import IntegrityError, exists
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql import exists
 
 from dbsession import session_maker
 from models.Block import Block
