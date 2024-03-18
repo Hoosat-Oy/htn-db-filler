@@ -106,20 +106,12 @@ class BlocksProcessor(object):
             if not self.is_tx_id_in_queue(transaction["verboseData"]["transactionId"]):
                 # Add transaction
 
-                if len(transaction["verboseData"]["blockHash"]) > 2500:
-                    self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
-                                              transaction_id=transaction["verboseData"]["transactionId"],
-                                              hash=transaction["verboseData"]["hash"],
-                                              mass=transaction["verboseData"].get("mass"),
-                                              block_hash=[func.md5(transaction["verboseData"]["blockHash"])],
-                                              block_time=int(transaction["verboseData"]["blockTime"]))
-                else:
-                    self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
-                                              transaction_id=transaction["verboseData"]["transactionId"],
-                                              hash=transaction["verboseData"]["hash"],
-                                              mass=transaction["verboseData"].get("mass"),
-                                              block_hash=[transaction["verboseData"]["blockHash"]],
-                                              block_time=int(transaction["verboseData"]["blockTime"]))
+                self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
+                                            transaction_id=transaction["verboseData"]["transactionId"],
+                                            hash=transaction["verboseData"]["hash"],
+                                            mass=transaction["verboseData"].get("mass"),
+                                            block_hash=[transaction["verboseData"]["blockHash"]],
+                                            block_time=int(transaction["verboseData"]["blockTime"]))
                 
 
                 # Add transactions output
@@ -163,18 +155,59 @@ class BlocksProcessor(object):
             session.commit()
 
         # Go through all transactions which were not in the database and add now.
+        MAX_TRANSACTION_ITEMS = 100
         with session_maker() as session:
+            item_count = 0
             # go through queues and add
             for _ in self.txs.values():
                 session.add(_)
+                item_count += 1
+                if item_count > MAX_TRANSACTION_ITEMS:
+                    try:
+                        session.commit()
+                        _logger.debug(f'Committed {item_count} items to database')
+                        item_count = 0
+                        session.expunge_all()
+                        session.begin()
+
+                    except IntegrityError:
+                        session.rollback()
+                        _logger.error(f'Error adding TXs to database')
+                        raise
 
             for tx_output in self.txs_output:
                 if tx_output.transaction_id in self.txs:
                     session.add(tx_output)
+                    item_count += 1
+                    if item_count > MAX_TRANSACTION_ITEMS:
+                        try:
+                            session.commit()
+                            _logger.debug(f'Committed {item_count} items to database')
+                            item_count = 0
+                            session.expunge_all()
+                            session.begin()
+
+                        except IntegrityError:
+                            session.rollback()
+                            _logger.error(f'Error adding TXs to database')
+                            raise
 
             for tx_input in self.txs_input:
                 if tx_input.transaction_id in self.txs:
                     session.add(tx_input)
+                    item_count += 1
+                    if item_count > MAX_TRANSACTION_ITEMS:
+                        try:
+                            session.commit()
+                            _logger.debug(f'Committed {item_count} items to database')
+                            item_count = 0
+                            session.expunge_all()
+                            session.begin()
+
+                        except IntegrityError:
+                            session.rollback()
+                            _logger.error(f'Error adding TXs to database')
+                            raise
 
             try:
                 session.commit()
