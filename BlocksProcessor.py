@@ -141,7 +141,8 @@ class BlocksProcessor(object):
 
     async def commit_txs(self):
         """
-        Add all queued transactions and it's in- and outputs to database
+        Add all queued transactions and their inputs and outputs to the database,
+        applying patch updates as needed.
         """
 
         # **1. Gather IDs for transactions needing updates or insertions:**
@@ -198,74 +199,65 @@ class BlocksProcessor(object):
                     _logger.error(f'Error inserting transactions')
                     raise
 
-        # Go through all transactions which were not in the database and add now.
-        MAX_TRANSACTION_ITEMS = 100
+        # **5. Process transaction inputs (batched):**
         with session_maker() as session:
-            item_count = 0
-            # go through queues and add
-            for _ in self.txs.values():
-                session.add(_)
-                item_count += 1
-                if item_count > MAX_TRANSACTION_ITEMS:
+            MAX_BATCH_SIZE = 100
+            num_inputs_added = 0
+            for tx_input in self.txs_input:
+                session.add(tx_input)
+                num_inputs_added += 1
+                if num_inputs_added >= MAX_BATCH_SIZE:
                     try:
                         session.commit()
-                        _logger.debug(f'Committed {item_count} items to database')
-                        item_count = 0
-                        session.expunge_all()
-                        session.begin()
-
+                        _logger.debug(f'Added {num_inputs_added} transaction inputs to database')
+                        num_inputs_added = 0
                     except IntegrityError:
                         session.rollback()
-                        _logger.error(f'Error adding TXs to database')
+                        _logger.error(f'Error adding transaction inputs')
                         raise
 
+            # Commit remaining inputs (if any)
+            if num_inputs_added > 0:
+                try:
+                    session.commit()
+                    _logger.debug(f'Added remaining {num_inputs_added} transaction inputs to database')
+                except IntegrityError:
+                    session.rollback()
+                    _logger.error(f'Error adding transaction inputs')
+                    raise
+
+        # **6. Process transaction outputs (batched):**
+        with session_maker() as session:
+            MAX_BATCH_SIZE = 100
+            num_outputs_added = 0
             for tx_output in self.txs_output:
-                if tx_output.transaction_id in self.txs:
-                    session.add(tx_output)
-                    item_count += 1
-                    if item_count > MAX_TRANSACTION_ITEMS:
-                        try:
-                            session.commit()
-                            _logger.debug(f'Committed {item_count} items to database')
-                            item_count = 0
-                            session.expunge_all()
-                            session.begin()
+                session.add(tx_output)
+                num_outputs_added += 1
+                if num_outputs_added >= MAX_BATCH_SIZE:
+                    try:
+                        session.commit()
+                        _logger.debug(f'Added {num_outputs_added} transaction outputs to database')
+                        num_outputs_added = 0
+                    except IntegrityError:
+                        session.rollback()
+                        _logger.error(f'Error adding transaction outputs')
+                        raise
 
-                        except IntegrityError:
-                            session.rollback()
-                            _logger.error(f'Error adding TXs to database')
-                            raise
+            # Commit remaining outputs (if any)
+            if num_outputs_added > 0:
+                try:
+                    session.commit()
+                    _logger.debug(f'Added remaining {num_outputs_added} transaction outputs to database')
+                except IntegrityError:
+                    session.rollback()
+                    _logger.error(f'Error adding transaction outputs')
+                    raise
 
-            for tx_input in self.txs_input:
-                if tx_input.transaction_id in self.txs:
-                    session.add(tx_input)
-                    item_count += 1
-                    if item_count > MAX_TRANSACTION_ITEMS:
-                        try:
-                            session.commit()
-                            _logger.debug(f'Committed {item_count} items to database')
-                            item_count = 0
-                            session.expunge_all()
-                            session.begin()
 
-                        except IntegrityError:
-                            session.rollback()
-                            _logger.error(f'Error adding TXs to database')
-                            raise
-
-            try:
-                session.commit()
-                _logger.debug(f'Added {len(self.txs)} TXs to database')
-
-                # reset queues
-                self.txs = {}
-                self.txs_input = []
-                self.txs_output = []
-
-            except IntegrityError:
-                session.rollback()
-                _logger.error(f'Error adding TXs to database')
-                raise
+        # **6. Reset queues:**
+        self.txs = {}
+        self.txs_input = []
+        self.txs_output = []
 
     async def __add_block_to_queue(self, block_hash, block):
         """
