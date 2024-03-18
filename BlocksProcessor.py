@@ -106,12 +106,21 @@ class BlocksProcessor(object):
             if not self.is_tx_id_in_queue(transaction["verboseData"]["transactionId"]):
                 # Add transaction
 
-                self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
+                if len(transaction["verboseData"]["blockHash"]) > 2500:
+                    self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
+                                              transaction_id=transaction["verboseData"]["transactionId"],
+                                              hash=transaction["verboseData"]["hash"],
+                                              mass=transaction["verboseData"].get("mass"),
+                                              block_hash=[func.md5(transaction["verboseData"]["blockHash"])],
+                                              block_time=int(transaction["verboseData"]["blockTime"]))
+                else:
+                    self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
                                               transaction_id=transaction["verboseData"]["transactionId"],
                                               hash=transaction["verboseData"]["hash"],
                                               mass=transaction["verboseData"].get("mass"),
                                               block_hash=[transaction["verboseData"]["blockHash"]],
                                               block_time=int(transaction["verboseData"]["blockTime"]))
+                
 
                 # Add transactions output
                 for index, out in enumerate(transaction.get("outputs", [])):
