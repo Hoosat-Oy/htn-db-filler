@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql import exists, update, bind_param
+from sqlalchemy.sql import exists, update, bindparam
 
 from dbsession import session_maker
 from models.Block import Block
