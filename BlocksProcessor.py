@@ -168,22 +168,19 @@ class BlocksProcessor(object):
                     tx_item = session.query(Transaction).get(tx_id)
 
                     if tx_item and tx_id in self.txs and self.txs[tx_id]:
-                        batch_block_hashes.append((tx_item, self.txs[tx_id].block_hash))
+                        batch_block_hashes.append((tx_id, self.txs[tx_id].block_hash))  # Store only transaction IDs and new_block_hashes
                     else:
                         _logger.warning(f"Transaction {tx_id} or its data is missing, skipping update")
 
                     # Commit batch for block_hashes when it reaches maximum size or end of loop:
                     if num_updated >= MAX_BATCH_SIZE or tx_id == tx_ids_to_update[-1]:
                         try:
-                            # Process block_hash updates in batch using SQL update:
+                            # Process batch_hash updates using SQL update and actual values:
                             session.execute(
                                 update(Transaction)
-                                .where(Transaction.transaction_id.in_([tx_item.transaction_id for tx_item, _ in batch_block_hashes]))
-                                .values({Transaction.block_hash: bindparam('new_block_hashes')})
+                                .where(Transaction.transaction_id.in_([tx_id for tx_id, _ in batch_block_hashes]))
+                                .values({Transaction.block_hash: [new_block_hashes for _, new_block_hashes in batch_block_hashes]})
                             )
-                            for tx_item, new_block_hashes in batch_block_hashes:
-                                session.execute(update(Transaction).where(Transaction.transaction_id == tx_item.transaction_id).values({Transaction.block_hash: list(set(tx_item.block_hash) | set(new_block_hashes))}))
-
                             session.commit()
                             _logger.debug(f'Updated batch of {num_updated} block_hashes in database')
                             num_updated = 0
