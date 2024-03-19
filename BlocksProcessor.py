@@ -17,7 +17,7 @@ _logger = logging.getLogger(__name__)
 
 CLUSTER_SIZE_INITIAL = 180 * 20
 CLUSTER_SIZE_SYNCED = 5
-CLUSTER_WAIT_SECONDS = 4
+CLUSTER_WAIT_SECONDS = 1
 
 
 class BlocksProcessor(object):
@@ -162,7 +162,7 @@ class BlocksProcessor(object):
 
         with session_maker() as session:
             with session.no_autoflush:
-                # **4. Insert new transactions (batched):**
+                # **3. Insert new transactions (batched):**
                 num_inserted = 0
                 while tx_ids_to_insert:
                     batch = tx_ids_to_insert[:MAX_BATCH_SIZE]
@@ -181,7 +181,7 @@ class BlocksProcessor(object):
                         _logger.error(f'Error inserting transactions')
                         raise
 
-                # **5. Process transaction inputs (batched):**
+                 # **4. Process transaction inputs (batched):**
                 num_inputs_added = 0
                 for tx_input in self.txs_input:
                     session.add(tx_input)
@@ -206,7 +206,7 @@ class BlocksProcessor(object):
                         _logger.error(f'Error adding transaction inputs')
                         raise
 
-                # **6. Process transaction outputs (batched):**
+                # **5. Process transaction outputs (batched):**
                 num_outputs_added = 0
                 for tx_output in self.txs_output:
                     session.add(tx_output)

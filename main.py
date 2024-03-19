@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import threading
+import sys
 import time
 
 from BlocksProcessor import BlocksProcessor
@@ -60,6 +61,11 @@ async def main():
     if not start_hash:
         daginfo = await client.request("getBlockDagInfoRequest", {})
         start_hash = daginfo["getBlockDagInfoResponse"]["virtualParentHashes"][0]
+
+    if len(sys.argv) > 1:
+        start_hash = sys.argv[1]
+
+    start_hash = "f7939ed9fe1c8b44dc9add93e4e985655e69ecd7cbed391b740590878a4f25b6"
 
     _logger.info(f"Start hash: {start_hash}")
 
