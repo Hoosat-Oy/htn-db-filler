@@ -5,7 +5,8 @@ import logging
 from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql import exists, update, bindparam
+from sqlalchemy.sql import exists, update, bindparam, cast, text
+from sqlalchemy import TEXT
 
 from dbsession import session_maker
 from models.Block import Block
@@ -159,53 +160,8 @@ class BlocksProcessor(object):
                         tx_ids_to_insert.append(tx_id)
                         tx_ids_to_update.remove(tx_id)  # Remove from update list
 
-                # **3. Update existing transactions (batched):**
-                num_updated = 0
-                batch_block_hashes = []  # Accumulate transaction IDs and new block hashes
-
-                for tx_id in tx_ids_to_update:
-                    num_updated += 1
-                    tx_item = session.query(Transaction).get(tx_id)
-
-                    if tx_item and tx_id in self.txs and self.txs[tx_id]:
-                        batch_block_hashes.append((tx_id, self.txs[tx_id].block_hash))
-                    else:
-                        _logger.warning(f"Transaction {tx_id} or its data is missing, skipping update")
-
-                    # Commit batch for block_hashes when it reaches maximum size or end of loop:
-                    if num_updated >= MAX_BATCH_SIZE or tx_id == tx_ids_to_update[-1]:
-                        try:
-                            # Process batch_hash updates using SQL update and actual values:
-                            session.execute(
-                                update(Transaction)
-                                .where(Transaction.transaction_id.in_([tx_id for tx_id, _ in batch_block_hashes]))
-                                .values({Transaction.block_hash: [new_block_hash for _, new_block_hash in batch_block_hashes]})
-                            )
-                            session.commit()
-                            _logger.debug(f'Updated batch of {num_updated} block_hashes in database')
-                            num_updated = 0
-                            batch_block_hashes = []  # Clear batch for next iteration
-                        except IntegrityError:
-                            session.rollback()
-                            _logger.error(f'Error updating block_hashes')
-                            raise
-
-                # Process any remaining updates outside the loop:
-                if batch_block_hashes:
-                    try:
-                        # Directly pass new_block_hashes for remaining updates:
-                        session.execute(
-                            update(Transaction)
-                            .where(Transaction.transaction_id.in_([tx_id for tx_id, _ in batch_block_hashes]))
-                            .values({Transaction.block_hash: [new_block_hash for _, new_block_hash in batch_block_hashes]})
-                        )
-                        session.commit()
-                        _logger.debug(f'Updated remaining block_hashes in database')
-                    except IntegrityError:
-                        session.rollback()
-                        _logger.error(f'Error updating block_hashes')
-                        raise
-
+        with session_maker() as session:
+            with session.no_autoflush:
                 # **4. Insert new transactions (batched):**
                 num_inserted = 0
                 while tx_ids_to_insert:
