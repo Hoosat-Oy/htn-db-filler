@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql import exists
+from sqlalchemy.sql import exists, update
 
 from dbsession import session_maker
 from models.Block import Block
@@ -145,6 +145,7 @@ class BlocksProcessor(object):
         Add all queued transactions and their inputs and outputs to the database,
         applying patch updates as needed.
         """
+        MAX_BATCH_SIZE = 10  # Use consistent batch size
 
         # **1. Gather IDs for transactions needing updates or insertions:**
         tx_ids_to_update = list(self.txs.keys())  # For existing transactions
@@ -152,115 +153,133 @@ class BlocksProcessor(object):
 
         # **2. Identify new transactions for insertion:**
         with session_maker() as session:
-            for tx_id in tx_ids_to_update:
-                if not session.query(exists().where(Transaction.transaction_id == tx_id)).scalar():
-                    tx_ids_to_insert.append(tx_id)
-                    tx_ids_to_update.remove(tx_id)  # Remove from update list
+            with session.no_autoflush:
+                for tx_id in tx_ids_to_update:
+                    if not session.query(exists().where(Transaction.transaction_id == tx_id)).scalar():
+                        tx_ids_to_insert.append(tx_id)
+                        tx_ids_to_update.remove(tx_id)  # Remove from update list
 
-        # **3. Update existing transactions (batched):**
-        # with session_maker() as session:
-        #     MAX_BATCH_SIZE = 20  # Define batch size
-        #     num_updated = 0
-        #     while tx_ids_to_update:
-        #         batch = tx_ids_to_update[:MAX_BATCH_SIZE]
-        #         tx_ids_to_update = tx_ids_to_update[MAX_BATCH_SIZE:]
+                # **3. Update existing transactions (batched):**
+                num_updated = 0
+                batch_block_hashes = []  # Accumulate block hashes for batch updates
 
-        #         for tx_id in batch:
-        #             tx_item = session.query(Transaction).get(tx_id)
-        #             # Handle potential NoneType values:
-        #             if tx_item and tx_id in self.txs and self.txs[tx_id]:
-        #                 # Update block_hash only if both objects are not None:
-        #                 tx_item.block_hash = list(
-        #                     set(tx_item.block_hash) | set(self.txs[tx_id].block_hash)
-        #                 )
-        #                 # ... (apply other patch updates as needed)
-        #             else:
-        #                 # Log or handle cases where tx_item or self.txs[tx_id] is None
-        #                 _logger.warning(f"Transaction {tx_id} or its data is missing, skipping update")
+                for tx_id in tx_ids_to_update:
+                    num_updated += 1
+                    tx_item = session.query(Transaction).get(tx_id)
 
-        #         try:
-        #             session.commit()
-        #             num_updated += len(batch)
-        #             _logger.debug(f'Updated {num_updated} transactions in database')
-        #         except IntegrityError:
-        #             session.rollback()
-        #             _logger.error(f'Error updating transactions')
-        #             raise
+                    if tx_item and tx_id in self.txs and self.txs[tx_id]:
+                        batch_block_hashes.append((tx_item, self.txs[tx_id].block_hash))
+                    else:
+                        _logger.warning(f"Transaction {tx_id} or its data is missing, skipping update")
 
-        # **4. Insert new transactions (batched):**
-        with session_maker() as session:
-            MAX_BATCH_SIZE = 20  # Use consistent batch size
-            num_inserted = 0
-            while tx_ids_to_insert:
-                batch = tx_ids_to_insert[:MAX_BATCH_SIZE]
-                tx_ids_to_insert = tx_ids_to_insert[MAX_BATCH_SIZE:]
+                    # Commit batch for block_hashes when it reaches maximum size or end of loop:
+                    if num_updated >= MAX_BATCH_SIZE or tx_id == tx_ids_to_update[-1]:
+                        try:
+                            # Process block_hash updates in batch using SQL update:
+                            session.execute(
+                                update(Transaction)
+                                .where(Transaction.transaction_id.in_([tx_item.transaction_id for tx_item, _ in batch_block_hashes]))
+                                .values({Transaction.block_hash: bindparam('new_block_hashes')})
+                            )
+                            for tx_item, new_block_hashes in batch_block_hashes:
+                                session.execute(update(Transaction).where(Transaction.transaction_id == tx_item.transaction_id).values({Transaction.block_hash: list(set(tx_item.block_hash) | set(new_block_hashes))}))
 
-                # Add new transactions from the batch:
-                for tx_id in batch:
-                    session.add(self.txs[tx_id])
+                            session.commit()
+                            _logger.debug(f'Updated batch of {num_updated} block_hashes in database')
+                            num_updated = 0
+                            batch_block_hashes = []  # Clear batch for next iteration
+                        except IntegrityError:
+                            session.rollback()
+                            _logger.error(f'Error updating block_hashes')
+                            raise
 
-                try:
-                    session.commit()
-                    num_inserted += len(batch)
-                    _logger.debug(f'Inserted {num_inserted} transactions into database')
-                except IntegrityError:
-                    session.rollback()
-                    _logger.error(f'Error inserting transactions')
-                    raise
+                # Commit any remaining updates (if any) outside the loop
+                if batch_block_hashes:
+                    try:
+                        # Process remaining block_hash updates in batch:
+                        session.execute(
+                            update(Transaction)
+                            .where(Transaction.transaction_id.in_([tx_item.transaction_id for tx_item, _ in batch_block_hashes]))
+                            .values({Transaction.block_hash: bindparam('new_block_hashes')})
+                        )
+                        for tx_item, new_block_hashes in batch_block_hashes:
+                            session.execute(update(Transaction).where(Transaction.transaction_id == tx_item.transaction_id).values({Transaction.block_hash: list(set(tx_item.block_hash) | set(new_block_hashes))}))
 
-        # **5. Process transaction inputs (batched):**
-        with session_maker() as session:
-            MAX_BATCH_SIZE = 20
-            num_inputs_added = 0
-            for tx_input in self.txs_input:
-                session.add(tx_input)
-                num_inputs_added += 1
-                if num_inputs_added >= MAX_BATCH_SIZE:
+                        session.commit()
+                        _logger.debug(f'Updated remaining block_hashes in database')
+                    except IntegrityError:
+                        session.rollback()
+                        _logger.error(f'Error updating block_hashes')
+                        raise
+
+                # **4. Insert new transactions (batched):**
+                num_inserted = 0
+                while tx_ids_to_insert:
+                    batch = tx_ids_to_insert[:MAX_BATCH_SIZE]
+                    tx_ids_to_insert = tx_ids_to_insert[MAX_BATCH_SIZE:]
+
+                    # Add new transactions from the batch:
+                    for tx_id in batch:
+                        session.add(self.txs[tx_id])
+
                     try:
                         session.commit()
-                        _logger.debug(f'Added {num_inputs_added} transaction inputs to database')
-                        num_inputs_added = 0
+                        num_inserted += len(batch)
+                        _logger.debug(f'Inserted {num_inserted} transactions into database')
+                    except IntegrityError:
+                        session.rollback()
+                        _logger.error(f'Error inserting transactions')
+                        raise
+
+                # **5. Process transaction inputs (batched):**
+                num_inputs_added = 0
+                for tx_input in self.txs_input:
+                    session.add(tx_input)
+                    num_inputs_added += 1
+                    if num_inputs_added >= MAX_BATCH_SIZE:
+                        try:
+                            session.commit()
+                            _logger.debug(f'Added {num_inputs_added} transaction inputs to database')
+                            num_inputs_added = 0
+                        except IntegrityError:
+                            session.rollback()
+                            _logger.error(f'Error adding transaction inputs')
+                            raise
+
+                # Commit remaining inputs (if any)
+                if num_inputs_added > 0:
+                    try:
+                        session.commit()
+                        _logger.debug(f'Added remaining {num_inputs_added} transaction inputs to database')
                     except IntegrityError:
                         session.rollback()
                         _logger.error(f'Error adding transaction inputs')
                         raise
 
-            # Commit remaining inputs (if any)
-            if num_inputs_added > 0:
-                try:
-                    session.commit()
-                    _logger.debug(f'Added remaining {num_inputs_added} transaction inputs to database')
-                except IntegrityError:
-                    session.rollback()
-                    _logger.error(f'Error adding transaction inputs')
-                    raise
+                # **6. Process transaction outputs (batched):**
+                num_outputs_added = 0
+                for tx_output in self.txs_output:
+                    session.add(tx_output)
+                    num_outputs_added += 1
+                    if num_outputs_added >= MAX_BATCH_SIZE:
+                        try:
+                            session.commit()
+                            _logger.debug(f'Added {num_outputs_added} transaction outputs to database')
+                            num_outputs_added = 0
+                        except IntegrityError:
+                            session.rollback()
+                            _logger.error(f'Error adding transaction outputs')
+                            raise
 
-        # **6. Process transaction outputs (batched):**
-        with session_maker() as session:
-            MAX_BATCH_SIZE = 20
-            num_outputs_added = 0
-            for tx_output in self.txs_output:
-                session.add(tx_output)
-                num_outputs_added += 1
-                if num_outputs_added >= MAX_BATCH_SIZE:
+                # Commit remaining outputs (if any)
+                if num_outputs_added > 0:
                     try:
                         session.commit()
-                        _logger.debug(f'Added {num_outputs_added} transaction outputs to database')
-                        num_outputs_added = 0
+                        _logger.debug(f'Added remaining {num_outputs_added} transaction outputs to database')
                     except IntegrityError:
                         session.rollback()
                         _logger.error(f'Error adding transaction outputs')
                         raise
-
-            # Commit remaining outputs (if any)
-            if num_outputs_added > 0:
-                try:
-                    session.commit()
-                    _logger.debug(f'Added remaining {num_outputs_added} transaction outputs to database')
-                except IntegrityError:
-                    session.rollback()
-                    _logger.error(f'Error adding transaction outputs')
-                    raise
 
 
         # **6. Reset queues:**
