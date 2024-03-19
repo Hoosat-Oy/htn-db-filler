@@ -146,7 +146,7 @@ class BlocksProcessor(object):
         Add all queued transactions and their inputs and outputs to the database,
         applying patch updates as needed.
         """
-        MAX_BATCH_SIZE = 10  # Use consistent batch size
+        MAX_BATCH_SIZE = 3  # Use consistent batch size
 
         # **1. Gather IDs for transactions needing updates or insertions:**
         tx_ids_to_update = list(self.txs.keys())  # For existing transactions
@@ -167,11 +167,9 @@ class BlocksProcessor(object):
                 while tx_ids_to_insert:
                     batch = tx_ids_to_insert[:MAX_BATCH_SIZE]
                     tx_ids_to_insert = tx_ids_to_insert[MAX_BATCH_SIZE:]
-
                     # Add new transactions from the batch:
                     for tx_id in batch:
                         session.add(self.txs[tx_id])
-
                     try:
                         session.commit()
                         num_inserted += len(batch)
