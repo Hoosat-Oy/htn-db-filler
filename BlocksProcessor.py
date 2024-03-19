@@ -147,6 +147,7 @@ class BlocksProcessor(object):
         applying patch updates as needed.
         """
         MAX_BATCH_SIZE = 10  # Use consistent batch size
+        MAX_BLOCK_HASHES = 32  # Adjust this number based on your schema's limitations
 
         # **1. Gather IDs for transactions needing updates or insertions:**
         tx_ids_to_update = list(self.txs.keys())  # For existing transactions
@@ -166,7 +167,11 @@ class BlocksProcessor(object):
                 num_inserted = 0
                 for tx_id in tx_ids_to_insert:
                     try:
-                        session.add(self.txs[tx_id])
+                        # Ensure the block_hash array does not exceed the maximum size
+                        transaction = self.txs[tx_id]
+                        if len(transaction.block_hash) > MAX_BLOCK_HASHES:
+                            transaction.block_hash = transaction.block_hash[:MAX_BLOCK_HASHES]
+                        session.add(transaction)
                         session.commit()
                         num_inserted += 1
                         _logger.debug(f'Inserted {num_inserted} transactions into database')
