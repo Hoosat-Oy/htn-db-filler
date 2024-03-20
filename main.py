@@ -67,7 +67,7 @@ async def main():
         start_hash = sys.argv[1]
 
     # ucomment in code to start from defined hash.
-    start_hash = "d96927e2527282b35bcb7c7f703679eb9ab15bbe922eed9fcd98cfde59f64221"
+    # start_hash = "d96927e2527282b35bcb7c7f703679eb9ab15bbe922eed9fcd98cfde59f64221"
 
     _logger.info(f"Start hash: {start_hash}")
 
