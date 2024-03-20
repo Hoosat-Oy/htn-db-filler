@@ -17,7 +17,7 @@ _logger = logging.getLogger(__name__)
 
 CLUSTER_SIZE_INITIAL = 180 * 20
 CLUSTER_SIZE_SYNCED = 5
-CLUSTER_WAIT_SECONDS = 1
+CLUSTER_WAIT_SECONDS = 0.5
 
 
 class BlocksProcessor(object):
@@ -146,8 +146,8 @@ class BlocksProcessor(object):
         Add all queued transactions and their inputs and outputs to the database,
         applying patch updates as needed.
         """
-        MAX_BATCH_SIZE = 10  # Use consistent batch size
-        MAX_BLOCK_HASHES = 32  # Adjust this number based on your schema's limitations
+        MAX_BATCH_SIZE = 30  # Use consistent batch size
+        MAX_BLOCK_HASHES = 64  # Adjust this number based on your schema's limitations
 
         # **1. Gather IDs for transactions needing updates or insertions:**
         tx_ids_to_update = list(self.txs.keys())  # For existing transactions
