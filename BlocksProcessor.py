@@ -1,12 +1,9 @@
-# encoding: utf-8
 
 import asyncio
 import logging
 from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.sql import exists, update, bindparam, cast, text
-from sqlalchemy import TEXT
 
 from dbsession import session_maker
 from models.Block import Block
@@ -22,7 +19,7 @@ CLUSTER_WAIT_SECONDS = 0.5
 
 class BlocksProcessor(object):
     """
-    BlocksProcessor polls karlsend for blocks and adds the meta information and it's transactions into database.
+    BlocksProcessor polls kaspad for blocks and adds the meta information and it's transactions into database.
     """
 
     def __init__(self, client):
@@ -109,12 +106,11 @@ class BlocksProcessor(object):
                 # Add transaction
 
                 self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
-                                            transaction_id=transaction["verboseData"]["transactionId"],
-                                            hash=transaction["verboseData"]["hash"],
-                                            mass=transaction["verboseData"].get("mass"),
-                                            block_hash=[transaction["verboseData"]["blockHash"]],
-                                            block_time=int(transaction["verboseData"]["blockTime"]))
-                
+                                              transaction_id=transaction["verboseData"]["transactionId"],
+                                              hash=transaction["verboseData"]["hash"],
+                                              mass=transaction["verboseData"].get("mass"),
+                                              block_hash=[transaction["verboseData"]["blockHash"]],
+                                              block_time=int(transaction["verboseData"]["blockTime"]))
 
                 # Add transactions output
                 for index, out in enumerate(transaction.get("outputs", [])):
@@ -136,110 +132,59 @@ class BlocksProcessor(object):
                                                            previous_outpoint_index=int(tx_in["previousOutpoint"].get(
                                                                "index", 0)),
                                                            signature_script=tx_in["signatureScript"],
-                                                           sig_op_count=tx_in["sigOpCount"]))
+                                                           sig_op_count=tx_in.get("sigOpCount", 0)))
             else:
                 # If the block if already in the Queue, merge the block_hashes.
                 self.txs[tx_id].block_hash = list(set(self.txs[tx_id].block_hash + [block_hash]))
 
     async def commit_txs(self):
         """
-        Add all queued transactions and their inputs and outputs to the database,
-        applying patch updates as needed.
+        Add all queued transactions and it's in- and outputs to database
         """
-        MAX_BATCH_SIZE = 30  # Use consistent batch size
-        MAX_BLOCK_HASHES = 64  # Adjust this number based on your schema's limitations
-
-        # **1. Gather IDs for transactions needing updates or insertions:**
-        tx_ids_to_update = list(self.txs.keys())  # For existing transactions
-        tx_ids_to_insert = []  # Initialize for new transactions
-
-        # **2. Identify new transactions for insertion:**
+        # First go through all transactions and check, if there are already added ones.
+        # If yes, update block_hash and remove from queue
+        tx_ids_to_add = list(self.txs.keys())
         with session_maker() as session:
-            with session.no_autoflush:
-                for tx_id in tx_ids_to_update:
-                    if not session.query(exists().where(Transaction.transaction_id == tx_id)).scalar():
-                        tx_ids_to_insert.append(tx_id)
-                        tx_ids_to_update.remove(tx_id)  # Remove from update list
+            tx_items = session.query(Transaction).filter(Transaction.transaction_id.in_(tx_ids_to_add)).all()
+            for tx_item in tx_items:
+                tx_item.block_hash = list((set(tx_item.block_hash) | set(self.txs[tx_item.transaction_id].block_hash)))
+                self.txs.pop(tx_item.transaction_id)
 
+            session.commit()
+
+        # Go through all transactions which were not in the database and add now.
         with session_maker() as session:
-            with session.no_autoflush:
-                # **3. Insert new transactions (batched):**
-                num_inserted = 0
-                for tx_id in tx_ids_to_insert:
-                    try:
-                        # Ensure the block_hash array does not exceed the maximum size
-                        transaction = self.txs[tx_id]
-                        if len(transaction.block_hash) > MAX_BLOCK_HASHES:
-                            transaction.block_hash = transaction.block_hash[:MAX_BLOCK_HASHES]
-                        session.add(transaction)
-                        session.commit()
-                        num_inserted += 1
-                        _logger.debug(f'Inserted {num_inserted} transactions into database')
-                    except IntegrityError:
-                        session.rollback()
-                        _logger.error(f'Error inserting transaction {tx_id}')
-                        raise
+            # go through queues and add
+            for _ in self.txs.values():
+                session.add(_)
 
-                 # **4. Process transaction inputs (batched):**
-                num_inputs_added = 0
-                for tx_input in self.txs_input:
-                    session.add(tx_input)
-                    num_inputs_added += 1
-                    if num_inputs_added >= MAX_BATCH_SIZE:
-                        try:
-                            session.commit()
-                            _logger.debug(f'Added {num_inputs_added} transaction inputs to database')
-                            num_inputs_added = 0
-                        except IntegrityError:
-                            session.rollback()
-                            _logger.error(f'Error adding transaction inputs')
-                            raise
-
-                # Commit remaining inputs (if any)
-                if num_inputs_added > 0:
-                    try:
-                        session.commit()
-                        _logger.debug(f'Added remaining {num_inputs_added} transaction inputs to database')
-                    except IntegrityError:
-                        session.rollback()
-                        _logger.error(f'Error adding transaction inputs')
-                        raise
-
-                # **5. Process transaction outputs (batched):**
-                num_outputs_added = 0
-                for tx_output in self.txs_output:
+            for tx_output in self.txs_output:
+                if tx_output.transaction_id in self.txs:
                     session.add(tx_output)
-                    num_outputs_added += 1
-                    if num_outputs_added >= MAX_BATCH_SIZE:
-                        try:
-                            session.commit()
-                            _logger.debug(f'Added {num_outputs_added} transaction outputs to database')
-                            num_outputs_added = 0
-                        except IntegrityError:
-                            session.rollback()
-                            _logger.error(f'Error adding transaction outputs')
-                            raise
 
-                # Commit remaining outputs (if any)
-                if num_outputs_added > 0:
-                    try:
-                        session.commit()
-                        _logger.debug(f'Added remaining {num_outputs_added} transaction outputs to database')
-                    except IntegrityError:
-                        session.rollback()
-                        _logger.error(f'Error adding transaction outputs')
-                        raise
+            for tx_input in self.txs_input:
+                if tx_input.transaction_id in self.txs:
+                    session.add(tx_input)
 
+            try:
+                session.commit()
+                _logger.debug(f'Added {len(self.txs)} TXs to database')
 
-        # **6. Reset queues:**
-        self.txs = {}
-        self.txs_input = []
-        self.txs_output = []
+                # reset queues
+                self.txs = {}
+                self.txs_input = []
+                self.txs_output = []
+
+            except IntegrityError:
+                session.rollback()
+                _logger.error(f'Error adding TXs to database')
+                raise
 
     async def __add_block_to_queue(self, block_hash, block):
         """
         Adds a block to the queue, which is used for adding a cluster
         """
+
         block_entity = Block(hash=block_hash,
                              accepted_id_merkle_root=block["header"]["acceptedIdMerkleRoot"],
                              difficulty=block["verboseData"]["difficulty"],
