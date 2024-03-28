@@ -17,8 +17,9 @@ CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
 
 BLOCKED_HASHES = [
-    "f7939ed9fe1c8b44dc9add93e4e985655e69ecd7cbed391b740590878a4f25b6"
-    "6edccdbd25d7de0f45adca812f32cba9f102580a657ba7082ccfc73f4dffbce6"
+    "f7939ed9fe1c8b44dc9add93e4e985655e69ecd7cbed391b740590878a4f25b6",
+    "6edccdbd25d7de0f45adca812f32cba9f102580a657ba7082ccfc73f4dffbce6",
+    "1597441023eeeead88aafa7a0578079de1e12565fc9646a9c1fe70200b56a791"
 ]
 
 class BlocksProcessor(object):
