@@ -70,7 +70,7 @@ async def main():
     # start_hash = "d96927e2527282b35bcb7c7f703679eb9ab15bbe922eed9fcd98cfde59f64221"
     # bad_block_hash from 17.3.2024
     # start_hash = "f7939ed9fe1c8b44dc9add93e4e985655e69ecd7cbed391b740590878a4f25b6"
-    # bad_block_hash from 28.3.2024
+    # bad_block_hash from 28.3.2024 6edccdbd25d7de0f45adca812f32cba9f102580a657ba7082ccfc73f4dffbce6
     start_hash = "a72a369a9e67e9d2b22e540dc0c96e09964afffd1c34c04af57cac525c6b3edc"
 
 
