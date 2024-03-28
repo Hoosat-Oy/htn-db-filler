@@ -21,6 +21,7 @@ BLOCKED_HASHES = [
     "6edccdbd25d7de0f45adca812f32cba9f102580a657ba7082ccfc73f4dffbce6",
     "1597441023eeeead88aafa7a0578079de1e12565fc9646a9c1fe70200b56a791",
     "117816b41c3a95ba72a5423845dfd9f61c21672e56d4fd73350bdeffa04f39e5",
+    "ef09da731c8f8b465a2f52b4c11d425bcd51660838dd22e1dedbd784893d529c",
 ]
 
 class BlocksProcessor(object):
