@@ -41,9 +41,8 @@ class BlocksProcessor(object):
     async def loop(self, start_point):
         # go through each block added to DAG
         async for block_hash, block in self.blockiter(start_point):
-            # print(block_hash)
+            print(block_hash)
             if block_hash not in BLOCKED_HASHES:
-                # print(block_hash)
                 # prepare add block and tx to database
                 await self.__add_block_to_queue(block_hash, block)
                 await self.__add_tx_to_queue(block_hash, block)
