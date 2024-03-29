@@ -56,6 +56,7 @@ class BlocksProcessor(object):
     async def loop(self, start_point):
         # go through each block added to DAG
         async for block_hash, block in self.blockiter(start_point):
+            print(block_hash)
             # prepare add block and tx to database
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
@@ -205,7 +206,7 @@ class BlocksProcessor(object):
         Adds a block to the queue, which is used for adding a cluster
         """
         serialized_size = get_size(block["verboseData"].get("mergeSetBluesHashes", [])) + get_size(block["verboseData"].get("mergeSetRedsHashes", []))
-
+        print(serialized_size)
         if serialized_size > B_TREE_SIZE:
             _logger.warning(f"Skipping block {block_hash} due to size constraints.")
             return

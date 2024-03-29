@@ -72,12 +72,13 @@ async def main():
     # start_hash = "f7939ed9fe1c8b44dc9add93e4e985655e69ecd7cbed391b740590878a4f25b6"
     # bad_block_hash from 28.3.2024 6edccdbd25d7de0f45adca812f32cba9f102580a657ba7082ccfc73f4dffbce6
     # start_hash = "eedc46d2feecbacaae3c4111f29b218c5fe5a3418be25f4bb6891947e8ee903d"
-    # bad_block_hash from 29.3.2024 bdb283a4a72dc8a8085d07b31d8b38118ca5e53e696d89620f94797cb83a3a14
-    # start_hash = "4aada52fae2478c3a243466be4df3ad0127fc63a330668672e835eea2fe0aed8"
-    # bad_block_hash from 29.3.2024 4aada52fae2478c3a243466be4df3ad0127fc63a330668672e835eea2fe0aed8
-    # start_hash = "593fce1929e18842f01b17cd823764418c5a53beea29e6b8019c960604981589"
-    # bad_block_hash from 29.3.2024 593fce1929e18842f01b17cd823764418c5a53beea29e6b8019c960604981589
-    start_hash = "76dcd01e582beddab501d3fdc4685006ee835c0cad959b3f3d966df961ace686"
+    # bad_block_hash from 29.3.2024 
+    # 2024-03-29 15:38:06,609::WARNING::BlocksProcessor::Skipping block 213019c5c43fba6695760b85764b5e77dced0249d795ec68c7d09dbf00d3a369 due to size constraints.
+    # 2024-03-29 15:38:06,609::WARNING::BlocksProcessor::Skipping block a4e2ecc7b857863e74cc218f23e4c6d030d4bfc9bbf34b09ab6580662174980f due to size constraints.
+    # 2024-03-29 15:38:06,610::WARNING::BlocksProcessor::Skipping block 66619a95b92a172be7598779630721efdbac32d319a95a2492e53762e230468e due to size constraints.
+    # 2024-03-29 15:38:06,611::WARNING::BlocksProcessor::Skipping block 1bc30e574616f34023d2c0ed24b4859a9e121eb36dfada3cf7641b0104d71183 due to size constraints.
+    # 2024-03-29 15:38:06,613::WARNING::BlocksProcessor::Skipping block af93f55c6080736568b7e9247a499ba454394f0b5b5185cbf37ae6116bae7645 due to size constraints.
+    start_hash = "bdb283a4a72dc8a8085d07b31d8b38118ca5e53e696d89620f94797cb83a3a14"
 
 
     _logger.info(f"Start hash: {start_hash}")
