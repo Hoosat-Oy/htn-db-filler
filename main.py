@@ -77,7 +77,7 @@ async def main():
     # bad_block_hash from 29.3.2024 4aada52fae2478c3a243466be4df3ad0127fc63a330668672e835eea2fe0aed8
     # start_hash = "593fce1929e18842f01b17cd823764418c5a53beea29e6b8019c960604981589"
     # bad_block_hash from 29.3.2024 593fce1929e18842f01b17cd823764418c5a53beea29e6b8019c960604981589
-    start_hash = "f22cb89d35d5f87094c95fdea678cf5038df8f8d85ae5c6db35f68d9a7ad9b10"
+    start_hash = "4a55e51987efd31b5e919146e7b341bd7d931c5db350f2f406010230f35dd46c"
 
 
     _logger.info(f"Start hash: {start_hash}")
