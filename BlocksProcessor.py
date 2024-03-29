@@ -16,7 +16,7 @@ _logger = logging.getLogger(__name__)
 CLUSTER_SIZE_INITIAL = 180 * 20
 CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
-B_TREE_SIZE = 2700
+B_TREE_SIZE = 1500
 
 def get_size(obj, seen=None):
     """Recursively finds size of objects in bytes"""
