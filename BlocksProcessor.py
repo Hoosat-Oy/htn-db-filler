@@ -15,6 +15,7 @@ _logger = logging.getLogger(__name__)
 CLUSTER_SIZE_INITIAL = 180 * 10
 CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
+B_TREE_SIZE = 2700
 
 BLOCKED_HASHES = [
     "f7939ed9fe1c8b44dc9add93e4e985655e69ecd7cbed391b740590878a4f25b6",
@@ -42,6 +43,24 @@ class BlocksProcessor(object):
 
         # Did the loop already see the DAG tip
         self.synced = False
+
+    def get_size(obj, seen=None):
+        """Recursively finds size of objects in bytes"""
+        size = sys.getsizeof(obj)
+        if seen is None:
+            seen = set()
+        obj_id = id(obj)
+        if obj_id in seen:
+            return 0
+        seen.add(obj_id)
+        if isinstance(obj, dict):
+            size += sum([get_size(v, seen) for v in obj.values()])
+            size += sum([get_size(k, seen) for k in obj.keys()])
+        elif hasattr(obj, '__dict__'):
+            size += get_size(obj.__dict__, seen)
+        elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+            size += sum([get_size(i, seen) for i in obj])
+        return size
 
     async def loop(self, start_point):
         # go through each block added to DAG
@@ -196,6 +215,12 @@ class BlocksProcessor(object):
         """
         Adds a block to the queue, which is used for adding a cluster
         """
+        serialized_size = get_size(block["verboseData"].get("mergeSetBluesHashes", [])) + \
+                            get_size(block["verboseData"].get("mergeSetRedsHashes", []))
+
+        if serialized_size > B_TREE_SIZE:
+            _logger.warning(f"Skipping block {block_hash} due to size constraints.")
+            return
 
         block_entity = Block(hash=block_hash,
                              accepted_id_merkle_root=block["header"]["acceptedIdMerkleRoot"],
