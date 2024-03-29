@@ -13,20 +13,10 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE_INITIAL = 180 * 10
+CLUSTER_SIZE_INITIAL = 180 * 20
 CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
-B_TREE_SIZE = 2700
-
-BLOCKED_HASHES = [
-    "f7939ed9fe1c8b44dc9add93e4e985655e69ecd7cbed391b740590878a4f25b6",
-    "6edccdbd25d7de0f45adca812f32cba9f102580a657ba7082ccfc73f4dffbce6",
-    "1597441023eeeead88aafa7a0578079de1e12565fc9646a9c1fe70200b56a791",
-    "117816b41c3a95ba72a5423845dfd9f61c21672e56d4fd73350bdeffa04f39e5",
-    "ef09da731c8f8b465a2f52b4c11d425bcd51660838dd22e1dedbd784893d529c",
-    "4aada52fae2478c3a243466be4df3ad0127fc63a330668672e835eea2fe0aed8",
-    "593fce1929e18842f01b17cd823764418c5a53beea29e6b8019c960604981589",
-]
+B_TREE_SIZE = 2500
 
 def get_size(obj, seen=None):
     """Recursively finds size of objects in bytes"""
@@ -66,17 +56,15 @@ class BlocksProcessor(object):
     async def loop(self, start_point):
         # go through each block added to DAG
         async for block_hash, block in self.blockiter(start_point):
-            print(block_hash)
-            if block_hash not in BLOCKED_HASHES:
-                # prepare add block and tx to database
-                await self.__add_block_to_queue(block_hash, block)
-                await self.__add_tx_to_queue(block_hash, block)
+            # prepare add block and tx to database
+            await self.__add_block_to_queue(block_hash, block)
+            await self.__add_tx_to_queue(block_hash, block)
 
-                # if cluster size is reached, insert to database
-                if len(self.blocks_to_add) >= (CLUSTER_SIZE_INITIAL if not self.synced else CLUSTER_SIZE_SYNCED):
-                    await self.commit_blocks()
-                    await self.commit_txs()
-                    await self.on_commited()
+            # if cluster size is reached, insert to database
+            if len(self.blocks_to_add) >= (CLUSTER_SIZE_INITIAL if not self.synced else CLUSTER_SIZE_SYNCED):
+                await self.commit_blocks()
+                await self.commit_txs()
+                await self.on_commited()
 
     async def blockiter(self, start_point):
         """
@@ -216,8 +204,7 @@ class BlocksProcessor(object):
         """
         Adds a block to the queue, which is used for adding a cluster
         """
-        serialized_size = get_size(block["verboseData"].get("mergeSetBluesHashes", [])) + \
-                            get_size(block["verboseData"].get("mergeSetRedsHashes", []))
+        serialized_size = get_size(block["verboseData"].get("mergeSetBluesHashes", [])) + get_size(block["verboseData"].get("mergeSetRedsHashes", []))
 
         if serialized_size > B_TREE_SIZE:
             _logger.warning(f"Skipping block {block_hash} due to size constraints.")
