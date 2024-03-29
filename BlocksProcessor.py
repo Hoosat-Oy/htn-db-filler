@@ -16,7 +16,7 @@ _logger = logging.getLogger(__name__)
 CLUSTER_SIZE_INITIAL = 180 * 20
 CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
-B_TREE_SIZE = 1000
+B_TREE_SIZE = 2500
 
 def get_size(obj, seen=None):
     """Recursively finds size of objects in bytes"""
@@ -166,13 +166,32 @@ class BlocksProcessor(object):
 
         # First, handle updates for existing transactions.
         tx_ids_to_add = list(self.txs.keys())
-        with session_maker() as session:
-            tx_items = session.query(Transaction).filter(Transaction.transaction_id.in_(tx_ids_to_add)).all()
-            for tx_item in tx_items:
-                tx_item.block_hash = list(set(tx_item.block_hash) | set(self.txs[tx_item.transaction_id].block_hash))
-                self.txs.pop(tx_item.transaction_id)
 
-            session.commit()
+        # Calculate the number of batches needed
+        num_batches = len(tx_ids_to_add) // BATCH_SIZE + (1 if len(tx_ids_to_add) % BATCH_SIZE > 0 else 0)
+
+        for i in range(num_batches):
+            with session_maker() as session:
+                # Determine the subset of transaction IDs for this batch
+                batch_tx_ids = tx_ids_to_add[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
+
+                # Query only the transactions in the current batch
+                tx_items = session.query(Transaction).filter(Transaction.transaction_id.in_(batch_tx_ids)).all()
+
+                for tx_item in tx_items:
+                    # Update block_hash by combining existing ones with new ones from self.txs
+                    new_block_hashes = list(set(tx_item.block_hash) | set(self.txs[tx_item.transaction_id].block_hash))
+                    tx_item.block_hash = new_block_hashes
+                    # Remove the transaction from self.txs since it's now been processed
+                    self.txs.pop(tx_item.transaction_id)
+
+                # Commit the updates for this batch
+                try:
+                    session.commit()
+                    _logger.debug(f'Updated {len(batch_tx_ids)} transactions in batch {i+1}/{num_batches}.')
+                except Exception as e:
+                    session.rollback()
+                    _logger.error(f'Error updating transactions in batch {i+1}/{num_batches}: {e}')
 
         # Pre-map outputs and inputs to their transaction IDs
         outputs_by_tx = {tx_id: [] for tx_id in self.txs.keys()}
@@ -262,11 +281,11 @@ class BlocksProcessor(object):
         """
         Adds a block to the queue, which is used for adding a cluster
         """
-        serialized_size = get_size(block["verboseData"].get("mergeSetBluesHashes", [])) + get_size(block["verboseData"].get("mergeSetRedsHashes", []))
-        # print(serialized_size)
-        if serialized_size > B_TREE_SIZE:
-            _logger.warning(f"Skipping block {block_hash} due to size constraints {serialized_size}")
-            return
+        # serialized_size = get_size(block["verboseData"].get("mergeSetBluesHashes", [])) + get_size(block["verboseData"].get("mergeSetRedsHashes", []))
+        # # print(serialized_size)
+        # if serialized_size > B_TREE_SIZE:
+        #     _logger.warning(f"Skipping block {block_hash} due to size constraints {serialized_size}")
+        #     return
 
         block_entity = Block(hash=block_hash,
                              accepted_id_merkle_root=block["header"]["acceptedIdMerkleRoot"],
