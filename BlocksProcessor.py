@@ -16,7 +16,7 @@ _logger = logging.getLogger(__name__)
 CLUSTER_SIZE_INITIAL = 180 * 20
 CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
-B_TREE_SIZE = 2500
+B_TREE_SIZE = 2700
 
 def get_size(obj, seen=None):
     """Recursively finds size of objects in bytes"""
@@ -56,7 +56,7 @@ class BlocksProcessor(object):
     async def loop(self, start_point):
         # go through each block added to DAG
         async for block_hash, block in self.blockiter(start_point):
-            print(block_hash)
+            #print(block_hash)
             # prepare add block and tx to database
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
@@ -160,7 +160,7 @@ class BlocksProcessor(object):
 
     async def commit_txs(self):
         """
-        Add all queued transactions and its in- and outputs to database in batches to avoid exceeding PostgreSQL limits.
+        Add all queued transactions and its in- and outputs to the database in batches to avoid exceeding PostgreSQL limits.
         """
         BATCH_SIZE = 100  # Define a suitable batch size
 
@@ -174,16 +174,27 @@ class BlocksProcessor(object):
 
             session.commit()
 
+        # Pre-map outputs and inputs to their transaction IDs
+        outputs_by_tx = {tx_id: [] for tx_id in self.txs.keys()}
+        for output in self.txs_output:
+            if output.transaction_id in outputs_by_tx:
+                outputs_by_tx[output.transaction_id].append(output)
+
+        inputs_by_tx = {tx_id: [] for tx_id in self.txs.keys()}
+        for input in self.txs_input:
+            if input.transaction_id in inputs_by_tx:
+                inputs_by_tx[input.transaction_id].append(input)
+
         # Now, handle insertion of new transactions in batches.
         all_new_txs = list(self.txs.values())
-        all_new_outputs = [output for output in self.txs_output if output.transaction_id in self.txs]
-        all_new_inputs = [input for input in self.txs_input if input.transaction_id in self.txs]
 
         for i in range(0, len(all_new_txs), BATCH_SIZE):
             with session_maker() as session:
                 batch_txs = all_new_txs[i:i + BATCH_SIZE]
-                batch_outputs = [output for output in all_new_outputs if output.transaction_id in [tx.transaction_id for tx in batch_txs]]
-                batch_inputs = [input for input in all_new_inputs if input.transaction_id in [tx.transaction_id for tx in batch_txs]]
+                batch_tx_ids = [tx.transaction_id for tx in batch_txs]
+
+                batch_outputs = [output for tx_id in batch_tx_ids for output in outputs_by_tx[tx_id]]
+                batch_inputs = [input for tx_id in batch_tx_ids for input in inputs_by_tx[tx_id]]
 
                 session.add_all(batch_txs)
                 session.add_all(batch_outputs)
@@ -195,19 +206,20 @@ class BlocksProcessor(object):
                 except Exception as e:
                     session.rollback()
                     _logger.error(f'Error adding TXs to database in a batch: {e}')
-                    # You might want to handle this exception more gracefully depending on your application's needs.
+                    # Further error handling could be implemented here as needed.
 
         # Reset queues after all batches have been processed.
         self.txs = {}
         self.txs_input = []
         self.txs_output = []
 
+
     async def __add_block_to_queue(self, block_hash, block):
         """
         Adds a block to the queue, which is used for adding a cluster
         """
         serialized_size = get_size(block["verboseData"].get("mergeSetBluesHashes", [])) + get_size(block["verboseData"].get("mergeSetRedsHashes", []))
-        print(serialized_size)
+        # print(serialized_size)
         if serialized_size > B_TREE_SIZE:
             _logger.warning(f"Skipping block {block_hash} due to size constraints.")
             return
