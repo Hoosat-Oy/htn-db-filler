@@ -16,7 +16,7 @@ _logger = logging.getLogger(__name__)
 CLUSTER_SIZE_INITIAL = 180 * 20
 CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
-B_TREE_SIZE = 1500
+B_TREE_SIZE = 1000
 
 def get_size(obj, seen=None):
     """Recursively finds size of objects in bytes"""
@@ -213,6 +213,50 @@ class BlocksProcessor(object):
         self.txs_input = []
         self.txs_output = []
 
+    # Original commit_txs
+    async def original_commit_txs(self):
+        """
+        Add all queued transactions and it's in- and outputs to database
+        """
+        # First go through all transactions and check, if there are already added ones.
+        # If yes, update block_hash and remove from queue
+        tx_ids_to_add = list(self.txs.keys())
+        with session_maker() as session:
+            tx_items = session.query(Transaction).filter(Transaction.transaction_id.in_(tx_ids_to_add)).all()
+            for tx_item in tx_items:
+                tx_item.block_hash = list((set(tx_item.block_hash) | set(self.txs[tx_item.transaction_id].block_hash)))
+                self.txs.pop(tx_item.transaction_id)
+
+            session.commit()
+
+        # Go through all transactions which were not in the database and add now.
+        with session_maker() as session:
+            # go through queues and add
+            for _ in self.txs.values():
+                session.add(_)
+
+            for tx_output in self.txs_output:
+                if tx_output.transaction_id in self.txs:
+                    session.add(tx_output)
+
+            for tx_input in self.txs_input:
+                if tx_input.transaction_id in self.txs:
+                    session.add(tx_input)
+
+            try:
+                session.commit()
+                _logger.debug(f'Added {len(self.txs)} TXs to database')
+
+                # reset queues
+                self.txs = {}
+                self.txs_input = []
+                self.txs_output = []
+
+            except IntegrityError:
+                session.rollback()
+                _logger.error(f'Error adding TXs to database')
+                raise
+
 
     async def __add_block_to_queue(self, block_hash, block):
         """
@@ -221,7 +265,7 @@ class BlocksProcessor(object):
         serialized_size = get_size(block["verboseData"].get("mergeSetBluesHashes", [])) + get_size(block["verboseData"].get("mergeSetRedsHashes", []))
         # print(serialized_size)
         if serialized_size > B_TREE_SIZE:
-            _logger.warning(f"Skipping block {block_hash} due to size constraints.")
+            _logger.warning(f"Skipping block {block_hash} due to size constraints {serialized_size}")
             return
 
         block_entity = Block(hash=block_hash,
