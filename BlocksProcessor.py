@@ -12,7 +12,7 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE_INITIAL = 180 * 20
+CLUSTER_SIZE_INITIAL = 180 * 10
 CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
 
