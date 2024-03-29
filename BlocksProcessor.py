@@ -27,6 +27,24 @@ BLOCKED_HASHES = [
     "593fce1929e18842f01b17cd823764418c5a53beea29e6b8019c960604981589",
 ]
 
+def get_size(obj, seen=None):
+    """Recursively finds size of objects in bytes"""
+    size = sys.getsizeof(obj)
+    if seen is None:
+        seen = set()
+    obj_id = id(obj)
+    if obj_id in seen:
+        return 0
+    seen.add(obj_id)
+    if isinstance(obj, dict):
+        size += sum([get_size(v, seen) for v in obj.values()])
+        size += sum([get_size(k, seen) for k in obj.keys()])
+    elif hasattr(obj, '__dict__'):
+        size += get_size(obj.__dict__, seen)
+    elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+        size += sum([get_size(i, seen) for i in obj])
+    return size
+
 class BlocksProcessor(object):
     """
     BlocksProcessor polls kaspad for blocks and adds the meta information and it's transactions into database.
@@ -43,24 +61,6 @@ class BlocksProcessor(object):
 
         # Did the loop already see the DAG tip
         self.synced = False
-
-    def get_size(obj, seen=None):
-        """Recursively finds size of objects in bytes"""
-        size = sys.getsizeof(obj)
-        if seen is None:
-            seen = set()
-        obj_id = id(obj)
-        if obj_id in seen:
-            return 0
-        seen.add(obj_id)
-        if isinstance(obj, dict):
-            size += sum([get_size(v, seen) for v in obj.values()])
-            size += sum([get_size(k, seen) for k in obj.keys()])
-        elif hasattr(obj, '__dict__'):
-            size += get_size(obj.__dict__, seen)
-        elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
-            size += sum([get_size(i, seen) for i in obj])
-        return size
 
     async def loop(self, start_point):
         # go through each block added to DAG
