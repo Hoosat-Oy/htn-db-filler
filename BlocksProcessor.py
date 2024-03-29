@@ -22,6 +22,8 @@ BLOCKED_HASHES = [
     "1597441023eeeead88aafa7a0578079de1e12565fc9646a9c1fe70200b56a791",
     "117816b41c3a95ba72a5423845dfd9f61c21672e56d4fd73350bdeffa04f39e5",
     "ef09da731c8f8b465a2f52b4c11d425bcd51660838dd22e1dedbd784893d529c",
+    "4aada52fae2478c3a243466be4df3ad0127fc63a330668672e835eea2fe0aed8",
+    "593fce1929e18842f01b17cd823764418c5a53beea29e6b8019c960604981589",
 ]
 
 class BlocksProcessor(object):
@@ -44,7 +46,7 @@ class BlocksProcessor(object):
     async def loop(self, start_point):
         # go through each block added to DAG
         async for block_hash, block in self.blockiter(start_point):
-            # print(block_hash)
+            print(block_hash)
             if block_hash not in BLOCKED_HASHES:
                 # prepare add block and tx to database
                 await self.__add_block_to_queue(block_hash, block)
