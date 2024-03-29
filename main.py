@@ -72,6 +72,8 @@ async def main():
     # start_hash = "f7939ed9fe1c8b44dc9add93e4e985655e69ecd7cbed391b740590878a4f25b6"
     # bad_block_hash from 28.3.2024 6edccdbd25d7de0f45adca812f32cba9f102580a657ba7082ccfc73f4dffbce6
     # start_hash = "eedc46d2feecbacaae3c4111f29b218c5fe5a3418be25f4bb6891947e8ee903d"
+    # bad_block_hash from 29.3.2024 bdb283a4a72dc8a8085d07b31d8b38118ca5e53e696d89620f94797cb83a3a14
+    start_hash = "4aada52fae2478c3a243466be4df3ad0127fc63a330668672e835eea2fe0aed8"
 
 
     _logger.info(f"Start hash: {start_hash}")
