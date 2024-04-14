@@ -79,7 +79,7 @@ async def main():
     # 2024-03-29 15:38:06,610::WARNING::BlocksProcessor::Skipping block 66619a95b92a172be7598779630721efdbac32d319a95a2492e53762e230468e due to size constraints.
     # 2024-03-29 15:38:06,611::WARNING::BlocksProcessor::Skipping block 1bc30e574616f34023d2c0ed24b4859a9e121eb36dfada3cf7641b0104d71183 due to size constraints.
     # 2024-03-29 15:38:06,613::WARNING::BlocksProcessor::Skipping block af93f55c6080736568b7e9247a499ba454394f0b5b5185cbf37ae6116bae7645 due to size constraints.
-    start_hash = "bdb283a4a72dc8a8085d07b31d8b38118ca5e53e696d89620f94797cb83a3a14"
+    #start_hash = "bdb283a4a72dc8a8085d07b31d8b38118ca5e53e696d89620f94797cb83a3a14"
 
 
     _logger.info(f"Start hash: {start_hash}")
