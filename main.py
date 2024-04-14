@@ -67,6 +67,7 @@ async def main():
         start_hash = sys.argv[1]
 
     # ucomment in code to start from defined hash.
+    start_hash = "c3003a4836c39a7965fc92241a2a2e9504399fe2694ff25276f7ea47dde7a783"
     # start_hash = "d96927e2527282b35bcb7c7f703679eb9ab15bbe922eed9fcd98cfde59f64221"
     # bad_block_hash from 17.3.2024
     # start_hash = "f7939ed9fe1c8b44dc9add93e4e985655e69ecd7cbed391b740590878a4f25b6"
