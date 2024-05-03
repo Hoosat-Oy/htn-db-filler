@@ -13,7 +13,7 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE_INITIAL = 180 * 20
+CLUSTER_SIZE_INITIAL = 20
 CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
 B_TREE_SIZE = 2500
@@ -41,7 +41,7 @@ class BlocksProcessor(object):
     BlocksProcessor polls kaspad for blocks and adds the meta information and it's transactions into database.
     """
 
-    def __init__(self, client):
+    def __init__(self, client, batch_processing = False):
         self.client = client
         self.blocks_to_add = []
         self.on_commited = Event()
@@ -49,6 +49,7 @@ class BlocksProcessor(object):
         self.txs = {}
         self.txs_output = []
         self.txs_input = []
+        self.batch_processing = batch_processing
 
         # Did the loop already see the DAG tip
         self.synced = False
@@ -56,15 +57,18 @@ class BlocksProcessor(object):
     async def loop(self, start_point):
         # go through each block added to DAG
         async for block_hash, block in self.blockiter(start_point):
-            #print(block_hash)
             # prepare add block and tx to database
+            _logger.info(block_hash)
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
 
             # if cluster size is reached, insert to database
             if len(self.blocks_to_add) >= (CLUSTER_SIZE_INITIAL if not self.synced else CLUSTER_SIZE_SYNCED):
                 await self.commit_blocks()
-                await self.commit_txs()
+                if self.batch_processing == False:
+                    await self.commit_txs()
+                else: 
+                    await self.batch_commit_txs()
                 await self.on_commited()
 
     async def blockiter(self, start_point):
@@ -116,52 +120,51 @@ class BlocksProcessor(object):
         Adds block's transactions to queue. This is only prepartion without commit!
         """
         # Go through blocks
-        if "transactions" in block:
-            for transaction in block.get("transactions"):
-                if "verboseData" in transaction:
-                    tx_id = transaction["verboseData"]["transactionId"]
+        for transaction in block["transactions"]:
+            if transaction.get("verboseData") is not None:
+                tx_id = transaction["verboseData"]["transactionId"]
+                _logger.info(f'adding transaction {tx_id}')
+                # Check, that the transaction isn't prepared yet. Otherwise ignore
+                # Often transactions are added in more than one block
+                if not self.is_tx_id_in_queue(transaction["verboseData"]["transactionId"]):
+                    # Add transaction
+                    self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
+                                                transaction_id=transaction["verboseData"]["transactionId"],
+                                                hash=transaction["verboseData"]["hash"],
+                                                mass=transaction["verboseData"].get("mass"),
+                                                block_hash=[transaction["verboseData"]["blockHash"]],
+                                                block_time=int(transaction["verboseData"]["blockTime"]))
 
-                    # Check, that the transaction isn't prepared yet. Otherwise ignore
-                    # Often transactions are added in more than one block
-                    if not self.is_tx_id_in_queue(transaction["verboseData"]["transactionId"]):
-                        # Add transaction
-
-                        self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
-                                                    transaction_id=transaction["verboseData"]["transactionId"],
-                                                    hash=transaction["verboseData"]["hash"],
-                                                    mass=transaction["verboseData"].get("mass"),
-                                                    block_hash=[transaction["verboseData"]["blockHash"]],
-                                                    block_time=int(transaction["verboseData"]["blockTime"]))
-
-                        # Add transactions output
-                        for index, out in enumerate(transaction.get("outputs", [])):
-                            self.txs_output.append(TransactionOutput(transaction_id=transaction["verboseData"]["transactionId"],
-                                                                    index=index,
-                                                                    amount=out["amount"],
-                                                                    script_public_key=out["scriptPublicKey"][
-                                                                        "scriptPublicKey"],
-                                                                    script_public_key_address=out["verboseData"][
-                                                                        "scriptPublicKeyAddress"],
-                                                                    script_public_key_type=out["verboseData"][
-                                                                        "scriptPublicKeyType"]))
-                        # Add transactions input
-                        for index, tx_in in enumerate(transaction.get("inputs", [])):
-                            self.txs_input.append(TransactionInput(transaction_id=transaction["verboseData"]["transactionId"],
+                    # Add transactions output
+                    for index, out in enumerate(transaction.get("outputs", [])):
+                        self.txs_output.append(TransactionOutput(transaction_id=transaction["verboseData"]["transactionId"],
                                                                 index=index,
-                                                                previous_outpoint_hash=tx_in["previousOutpoint"][
-                                                                    "transactionId"],
-                                                                previous_outpoint_index=int(tx_in["previousOutpoint"].get(
-                                                                    "index", 0)),
-                                                                signature_script=tx_in["signatureScript"],
-                                                                sig_op_count=tx_in.get("sigOpCount", 0)))
-                    else:
-                        # If the block if already in the Queue, merge the block_hashes.
-                        self.txs[tx_id].block_hash = list(set(self.txs[tx_id].block_hash + [block_hash]))
+                                                                amount=out["amount"],
+                                                                script_public_key=out["scriptPublicKey"][
+                                                                    "scriptPublicKey"],
+                                                                script_public_key_address=out["verboseData"][
+                                                                    "scriptPublicKeyAddress"],
+                                                                script_public_key_type=out["verboseData"][
+                                                                    "scriptPublicKeyType"]))
+                    # Add transactions input
+                    for index, tx_in in enumerate(transaction.get("inputs", [])):
+                        self.txs_input.append(TransactionInput(transaction_id=transaction["verboseData"]["transactionId"],
+                                                            index=index,
+                                                            previous_outpoint_hash=tx_in["previousOutpoint"][
+                                                                "transactionId"],
+                                                            previous_outpoint_index=int(tx_in["previousOutpoint"].get(
+                                                                "index", 0)),
+                                                            signature_script=tx_in["signatureScript"],
+                                                            sig_op_count=tx_in.get("sigOpCount", 0)))
+                else:
+                    # If the block if already in the Queue, merge the block_hashes.
+                    self.txs[tx_id].block_hash = list(set(self.txs[tx_id].block_hash + [block_hash]))
 
-    async def commit_txs(self):
+    async def batch_commit_txs(self):
         """
         Add all queued transactions and its in- and outputs to the database in batches to avoid exceeding PostgreSQL limits.
         """
+        _logger.info('commit_txs')
         BATCH_SIZE = 100  # Define a suitable batch size
 
         # First, handle updates for existing transactions.
@@ -170,6 +173,7 @@ class BlocksProcessor(object):
         # Calculate the number of batches needed
         num_batches = len(tx_ids_to_add) // BATCH_SIZE + (1 if len(tx_ids_to_add) % BATCH_SIZE > 0 else 0)
 
+        _logger.info(f'commit_txs num_batches: {num_batches}')
         for i in range(num_batches):
             with session_maker() as session:
                 # Determine the subset of transaction IDs for this batch
@@ -233,7 +237,7 @@ class BlocksProcessor(object):
         self.txs_output = []
 
     # Original commit_txs
-    async def original_commit_txs(self):
+    async def commit_txs(self):
         """
         Add all queued transactions and it's in- and outputs to database
         """
