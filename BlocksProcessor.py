@@ -291,6 +291,11 @@ class BlocksProcessor(object):
         #     _logger.warning(f"Skipping block {block_hash} due to size constraints {serialized_size}")
         #     return
 
+        if 'parents' in block["header"] and block["header"]["parents"]:
+            parent_hashes = block["header"]["parents"][0].get("parentHashes", [])
+        else:
+            parent_hashes = []
+
         block_entity = Block(hash=block_hash,
                              accepted_id_merkle_root=block["header"]["acceptedIdMerkleRoot"],
                              difficulty=block["verboseData"]["difficulty"],
@@ -304,11 +309,11 @@ class BlocksProcessor(object):
                              daa_score=int(block["header"].get("daaScore", 0)),
                              hash_merkle_root=block["header"]["hashMerkleRoot"],
                              nonce=block["header"]["nonce"],
-                             parents=block["header"]["parents"][0]["parentHashes"],
+                             parents=parent_hashes,
                              pruning_point=block["header"]["pruningPoint"],
                              timestamp=datetime.fromtimestamp(int(block["header"]["timestamp"]) / 1000).isoformat(),
                              utxo_commitment=block["header"]["utxoCommitment"],
-                             version=block["header"]["version"])
+                             version=block["header"].get("version", 0))
 
         # remove same block hash
         self.blocks_to_add = [b for b in self.blocks_to_add if b.hash != block_hash]
