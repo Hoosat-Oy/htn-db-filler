@@ -15,7 +15,7 @@ _logger = logging.getLogger(__name__)
 
 CLUSTER_SIZE_INITIAL = 20
 CLUSTER_SIZE_SYNCED = 5
-CLUSTER_WAIT_SECONDS = 0.5
+CLUSTER_WAIT_SECONDS = 0.1
 B_TREE_SIZE = 2500
 
 def get_size(obj, seen=None):
@@ -58,7 +58,6 @@ class BlocksProcessor(object):
         # go through each block added to DAG
         async for block_hash, block in self.blockiter(start_point):
             # prepare add block and tx to database
-            _logger.info(block_hash)
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
 
@@ -106,6 +105,7 @@ class BlocksProcessor(object):
             # new low hash is the last hash of previous response
             if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
                 low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
+                await asyncio.sleep(CLUSTER_WAIT_SECONDS)
             else:
                 _logger.debug('')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
@@ -123,7 +123,6 @@ class BlocksProcessor(object):
         for transaction in block["transactions"]:
             if transaction.get("verboseData") is not None:
                 tx_id = transaction["verboseData"]["transactionId"]
-                _logger.info(f'adding transaction {tx_id}')
                 # Check, that the transaction isn't prepared yet. Otherwise ignore
                 # Often transactions are added in more than one block
                 if not self.is_tx_id_in_queue(tx_id):
@@ -164,7 +163,6 @@ class BlocksProcessor(object):
         """
         Add all queued transactions and its in- and outputs to the database in batches to avoid exceeding PostgreSQL limits.
         """
-        _logger.info('commit_txs')
         BATCH_SIZE = 100  # Define a suitable batch size
 
         # First, handle updates for existing transactions.
@@ -173,7 +171,6 @@ class BlocksProcessor(object):
         # Calculate the number of batches needed
         num_batches = len(tx_ids_to_add) // BATCH_SIZE + (1 if len(tx_ids_to_add) % BATCH_SIZE > 0 else 0)
 
-        _logger.info(f'commit_txs num_batches: {num_batches}')
         for i in range(num_batches):
             with session_maker() as session:
                 # Determine the subset of transaction IDs for this batch
@@ -192,7 +189,7 @@ class BlocksProcessor(object):
                 # Commit the updates for this batch
                 try:
                     session.commit()
-                    _logger.debug(f'Updated {len(batch_tx_ids)} transactions in batch {i+1}/{num_batches}.')
+                    _logger.info(f'Updated {len(batch_tx_ids)} transactions in batch {i+1}/{num_batches}.')
                 except Exception as e:
                     session.rollback()
                     _logger.error(f'Error updating transactions in batch {i+1}/{num_batches}: {e}')
@@ -225,7 +222,7 @@ class BlocksProcessor(object):
 
                 try:
                     session.commit()
-                    _logger.debug(f'Added {len(batch_txs)} TXs to database in a batch.')
+                    _logger.info(f'Added {len(batch_txs)} TXs to database in a batch.')
                 except Exception as e:
                     session.rollback()
                     _logger.error(f'Error adding TXs to database in a batch: {e}')
@@ -268,7 +265,7 @@ class BlocksProcessor(object):
 
             try:
                 session.commit()
-                _logger.debug(f'Added {len(self.txs)} TXs to database')
+                _logger.info(f'Added {len(self.txs)} TXs to database')
 
                 # reset queues
                 self.txs = {}
@@ -323,6 +320,7 @@ class BlocksProcessor(object):
         """
         Insert queued blocks to database
         """
+        
         # delete already set old blocks
         with session_maker() as session:
             d = session.query(Block).filter(
@@ -335,7 +333,7 @@ class BlocksProcessor(object):
                 session.add(_)
             try:
                 session.commit()
-                _logger.debug(f'Added {len(self.blocks_to_add)} blocks to database. '
+                _logger.info(f'Added {len(self.blocks_to_add)} blocks to database. '
                               f'Timestamp: {self.blocks_to_add[-1].timestamp}')
 
                 # reset queue
