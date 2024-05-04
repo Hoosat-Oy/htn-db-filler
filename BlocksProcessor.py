@@ -126,10 +126,10 @@ class BlocksProcessor(object):
                 _logger.info(f'adding transaction {tx_id}')
                 # Check, that the transaction isn't prepared yet. Otherwise ignore
                 # Often transactions are added in more than one block
-                if not self.is_tx_id_in_queue(transaction["verboseData"]["transactionId"]):
+                if not self.is_tx_id_in_queue(tx_id):
                     # Add transaction
                     self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
-                                                transaction_id=transaction["verboseData"]["transactionId"],
+                                                transaction_id=tx_id,
                                                 hash=transaction["verboseData"]["hash"],
                                                 mass=transaction["verboseData"].get("mass"),
                                                 block_hash=[transaction["verboseData"]["blockHash"]],
@@ -137,7 +137,7 @@ class BlocksProcessor(object):
 
                     # Add transactions output
                     for index, out in enumerate(transaction.get("outputs", [])):
-                        self.txs_output.append(TransactionOutput(transaction_id=transaction["verboseData"]["transactionId"],
+                        self.txs_output.append(TransactionOutput(transaction_id=tx_id,
                                                                 index=index,
                                                                 amount=out["amount"],
                                                                 script_public_key=out["scriptPublicKey"][
@@ -148,7 +148,7 @@ class BlocksProcessor(object):
                                                                     "scriptPublicKeyType"]))
                     # Add transactions input
                     for index, tx_in in enumerate(transaction.get("inputs", [])):
-                        self.txs_input.append(TransactionInput(transaction_id=transaction["verboseData"]["transactionId"],
+                        self.txs_input.append(TransactionInput(transaction_id=tx_id,
                                                             index=index,
                                                             previous_outpoint_hash=tx_in["previousOutpoint"][
                                                                 "transactionId"],
