@@ -13,28 +13,10 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE_INITIAL = 20
+CLUSTER_SIZE_INITIAL = 150 * 20 
 CLUSTER_SIZE_SYNCED = 5
-CLUSTER_WAIT_SECONDS = 0.1
+CLUSTER_WAIT_SECONDS = 0.5
 B_TREE_SIZE = 2500
-
-def get_size(obj, seen=None):
-    """Recursively finds size of objects in bytes"""
-    size = sys.getsizeof(obj)
-    if seen is None:
-        seen = set()
-    obj_id = id(obj)
-    if obj_id in seen:
-        return 0
-    seen.add(obj_id)
-    if isinstance(obj, dict):
-        size += sum([get_size(v, seen) for v in obj.values()])
-        size += sum([get_size(k, seen) for k in obj.keys()])
-    elif hasattr(obj, '__dict__'):
-        size += get_size(obj.__dict__, seen)
-    elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
-        size += sum([get_size(i, seen) for i in obj])
-    return size
 
 class BlocksProcessor(object):
     """
@@ -83,6 +65,7 @@ class BlocksProcessor(object):
                                                  "includeBlocks": True
                                              },
                                              timeout=60)
+
             # if it's not synced, get the tiphash, which has to be found for getting synced
             if not self.synced:
                 daginfo = await self.client.request("getBlockDagInfoRequest", {})
@@ -105,10 +88,10 @@ class BlocksProcessor(object):
             # new low hash is the last hash of previous response
             if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
                 low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
-                await asyncio.sleep(CLUSTER_WAIT_SECONDS)
+                await asyncio.sleep(0.01)
             else:
                 _logger.debug('')
-                await asyncio.sleep(CLUSTER_WAIT_SECONDS)
+                await asyncio.sleep(2)
 
             # if synced, poll blocks after 1s
             if self.synced:
@@ -282,11 +265,6 @@ class BlocksProcessor(object):
         """
         Adds a block to the queue, which is used for adding a cluster
         """
-        # serialized_size = get_size(block["verboseData"].get("mergeSetBluesHashes", [])) + get_size(block["verboseData"].get("mergeSetRedsHashes", []))
-        # # print(serialized_size)
-        # if serialized_size > B_TREE_SIZE:
-        #     _logger.warning(f"Skipping block {block_hash} due to size constraints {serialized_size}")
-        #     return
 
         if 'parents' in block["header"] and block["header"]["parents"]:
             parent_hashes = block["header"]["parents"][0].get("parentHashes", [])
@@ -333,8 +311,7 @@ class BlocksProcessor(object):
                 session.add(_)
             try:
                 session.commit()
-                _logger.info(f'Added {len(self.blocks_to_add)} blocks to database. '
-                              f'Timestamp: {self.blocks_to_add[-1].timestamp}')
+                _logger.info(f'Added {len(self.blocks_to_add)} blocks to database. ')
 
                 # reset queue
                 self.blocks_to_add = []
