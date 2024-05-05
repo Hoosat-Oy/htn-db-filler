@@ -208,7 +208,7 @@ class BlocksProcessor(object):
                     _logger.info(f'Added {len(batch_txs)} TXs to database in a batch.')
                 except Exception as e:
                     session.rollback()
-                    _logger.error(f'Error adding TXs to database in a batch: {e}')
+                    _logger.error(f'Error adding TXs to database in a batch {i+1}/{num_batches}: {e}')
                     # Further error handling could be implemented here as needed.
 
         # Reset queues after all batches have been processed.
