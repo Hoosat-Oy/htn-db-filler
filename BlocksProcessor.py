@@ -13,7 +13,7 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE_INITIAL = 150 * 20 
+CLUSTER_SIZE_INITIAL = 500 
 CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
 B_TREE_SIZE = 2500
@@ -88,7 +88,7 @@ class BlocksProcessor(object):
             # new low hash is the last hash of previous response
             if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
                 low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
-                await asyncio.sleep(0.01)
+                await asyncio.sleep(1)
             else:
                 _logger.debug('')
                 await asyncio.sleep(2)
