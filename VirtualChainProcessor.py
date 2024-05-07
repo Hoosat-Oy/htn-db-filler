@@ -68,7 +68,7 @@ class VirtualChainProcessor(object):
             if rejected_blocks:
                 count = s.query(Transaction).filter(Transaction.accepting_block_hash.in_(rejected_blocks)) \
                     .update({'is_accepted': False, 'accepting_block_hash': None})
-                _logger.debug(f'Set is_accepted=False for {count} TXs')
+                _logger.info(f'Set is_accepted=False for {count} TXs')
                 s.commit()
 
             count_tx = 0
@@ -79,7 +79,7 @@ class VirtualChainProcessor(object):
                     .update({'is_accepted': True, 'accepting_block_hash': accepting_block_hash})
                 count_tx += len(accepted_tx_ids)
 
-            _logger.debug(f'Set is_accepted=True for {count_tx} transactions.')
+            _logger.info(f'Set is_accepted=True for {count_tx} transactions.')
             s.commit()
 
         # Mark last known/processed as start point for the next query
