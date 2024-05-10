@@ -43,7 +43,6 @@ if not htnd_hosts:
 
 # create Htnd client
 client = HtndMultiClient(htnd_hosts)
-task_runner = None
 
 async def main():
     # initialize htnds
@@ -68,28 +67,15 @@ async def main():
     if env_start_hash != None:
         start_hash = env_start_hash
 
+    next_start_point = start_hash
     _logger.info(f"Start hash: {start_hash}")
 
     batch_processing_str = os.getenv('BATCH_PROCESSING', 'False')  # Default to 'False' if not set
     batch_processing = batch_processing_str.lower() in ['true', '1', 't', 'y', 'yes']
 
     # create instances of blocksprocessor and virtualchainprocessor
-    bp = BlocksProcessor(client, batch_processing)
     vcp = VirtualChainProcessor(client, start_hash)
-
-    async def handle_blocks_commited(e):
-        """
-        this function is executed, when a new cluster of blocks were added to the database
-        """
-        global task_runner
-        if task_runner and not task_runner.done():
-            return
-
-        _logger.debug('Update is_accepted for TXs.')
-        task_runner = asyncio.create_task(vcp.yield_to_database())
-
-    # set up event to fire after adding new blocks
-    bp.on_commited += handle_blocks_commited
+    bp = BlocksProcessor(client, vcp, batch_processing)
 
     # start blocks processor working concurrent
     while True:

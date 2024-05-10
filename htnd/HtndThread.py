@@ -1,5 +1,6 @@
 # encoding: utf-8
 import asyncio
+import logging
 from queue import Queue
 
 import grpc
@@ -11,6 +12,8 @@ from .messages_pb2 import KaspadMessage
 
 MAX_MESSAGE_LENGTH = 1024 * 1024 * 1024  # 1GB
 
+
+_logger = logging.getLogger(__name__)
 
 class HtndCommunicationError(Exception): pass
 
@@ -50,29 +53,28 @@ class HtndThread(object):
     def __exit__(self, *args):
         self.__closing = True
 
-    async def request(self, command, params=None, wait_for_response=True, timeout=5):
-        attempt = 0
-        retries = 60
-        retry_delay = timeout / 2
-        while attempt < retries:
-            if wait_for_response:
+    async def request(self, command, params=None, wait_for_response=True, timeout=5, retry=3):
+        if wait_for_response:
+            attempt = 0
+            retry_delay = 30
+            while attempt < retry:
                 try:
                     async for resp in self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout):
                         self.__queue.put_nowait("done")
                         return json_format.MessageToDict(resp)
                 except grpc.aio._call.AioRpcError as e:
                     attempt += 1
-                    if attempt >= retries:
-                        raise HtndCommunicationError(f"Failed after {retries} attempts: {str(e)}")
+                    if attempt >= retry:
+                        raise HtndCommunicationError(f"Failed after {retry} attempts: {str(e)}")
                     print(f"Encountered an error: {e}. Retrying in {retry_delay} seconds...")
                     await asyncio.sleep(retry_delay)
-                except Exception as e:
-                    # Handle other exceptions if necessary
-                    raise e
-            else:
-                # If no response is needed, just send the command without handling the response.
-                # Note: This block won't retry as it's outside the error handling for grpc.aio._call.AioRpcError.
+                except grpc.aio._call.AioRpcError as e:
+                    raise HtndCommunicationError(str(e))
+        else:
+            try:
                 await self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout)
+            except grpc.aio._call.AioRpcError as e:
+                raise HtndCommunicationError(str(e))
 
     async def notify(self, command, params=None, callback_func=None):
         try:

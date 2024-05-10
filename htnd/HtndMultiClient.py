@@ -21,12 +21,12 @@ class HtndMultiClient(object):
         for t in tasks:
             await t
 
-    async def request(self, command, params=None, timeout=60):
+    async def request(self, command, params=None, timeout=60, retry=3):
         try:
             return await self.__get_htnd().request(command, params, timeout=timeout, retry=1)
         except HtndCommunicationError:
             await self.initialize_all()
-            return await self.__get_htnd().request(command, params, timeout=timeout, retry=3)
+            return await self.__get_htnd().request(command, params, timeout=timeout, retry=retry)
 
     async def notify(self, command, params, callback):
         return await self.__get_htnd().notify(command, params, callback)

@@ -13,24 +13,26 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE_INITIAL = 500 
+CLUSTER_SIZE_INITIAL = 3600
 CLUSTER_SIZE_SYNCED = 5
 CLUSTER_WAIT_SECONDS = 0.5
 B_TREE_SIZE = 2500
+
+task_runner = None
 
 class BlocksProcessor(object):
     """
     BlocksProcessor polls kaspad for blocks and adds the meta information and it's transactions into database.
     """
 
-    def __init__(self, client, batch_processing = False):
+    def __init__(self, client, vcp_instance, batch_processing = False, ):
         self.client = client
         self.blocks_to_add = []
-        self.on_commited = Event()
 
         self.txs = {}
         self.txs_output = []
         self.txs_input = []
+        self.vcp = vcp_instance
         self.batch_processing = batch_processing
 
         # Did the loop already see the DAG tip
@@ -38,19 +40,33 @@ class BlocksProcessor(object):
 
     async def loop(self, start_point):
         # go through each block added to DAG
+        global next_start_point
         async for block_hash, block in self.blockiter(start_point):
             # prepare add block and tx to database
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
-
+            _logger.debug(f'Queued block: {block_hash}')
             # if cluster size is reached, insert to database
             if len(self.blocks_to_add) >= (CLUSTER_SIZE_INITIAL if not self.synced else CLUSTER_SIZE_SYNCED):
+                _logger.info(f'Committing blocks.')
                 await self.commit_blocks()
+                _logger.info(f'Committing transactions.')
                 if self.batch_processing == False:
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                await self.on_commited()
+                await self.handle_blocks_commited(block_hash)
+
+    async def handle_blocks_commited(self, block_hash):
+        """
+        this function is executed, when a new cluster of blocks were added to the database
+        """
+        global task_runner
+        if task_runner and not task_runner.done():
+            return
+        if self.synced is False:
+            self.vcp.set_new_start_point(block_hash)
+        task_runner = asyncio.create_task(self.vcp.yield_to_database())
 
     async def blockiter(self, start_point):
         """
@@ -95,7 +111,7 @@ class BlocksProcessor(object):
 
             # if synced, poll blocks after 1s
             if self.synced:
-                _logger.debug(f'Waiting for the next blocks request. ({len(self.blocks_to_add)}/{CLUSTER_SIZE_SYNCED})')
+                _logger.info(f'Waiting for the next blocks request. ({len(self.blocks_to_add)}/{CLUSTER_SIZE_SYNCED})')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
 
     async def __add_tx_to_queue(self, block_hash, block):
@@ -172,10 +188,10 @@ class BlocksProcessor(object):
                 # Commit the updates for this batch
                 try:
                     session.commit()
-                    _logger.info(f'Updated {len(batch_tx_ids)} transactions in batch {i+1}/{num_batches}.')
                 except Exception as e:
                     session.rollback()
                     _logger.error(f'Error updating transactions in batch {i+1}/{num_batches}: {e}')
+        _logger.info(f'Updated {len(tx_ids_to_add)} transactions in batch {i+1}/{num_batches}.')
 
         # Pre-map outputs and inputs to their transaction IDs
         outputs_by_tx = {tx_id: [] for tx_id in self.txs.keys()}
@@ -205,7 +221,7 @@ class BlocksProcessor(object):
 
                 try:
                     session.commit()
-                    _logger.info(f'Added {len(batch_txs)} TXs to database in a batch.')
+                    # _logger.info(f'Added {len(batch_txs)} TXs to database in a batch.')
                 except Exception as e:
                     session.rollback()
                     _logger.error(f'Error adding TXs to database in a batch {i+1}/{num_batches}: {e}')
@@ -229,7 +245,6 @@ class BlocksProcessor(object):
             for tx_item in tx_items:
                 tx_item.block_hash = list((set(tx_item.block_hash) | set(self.txs[tx_item.transaction_id].block_hash)))
                 self.txs.pop(tx_item.transaction_id)
-
             session.commit()
 
         # Go through all transactions which were not in the database and add now.
