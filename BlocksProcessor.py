@@ -192,7 +192,8 @@ class BlocksProcessor(object):
                 except Exception as e:
                     session.rollback()
                     _logger.error(f'Error updating transactions in batch {i+1}/{num_batches}: {e}')
-        _logger.info(f'Updated {len(tx_ids_to_add)} transactions in batch {i+1}/{num_batches}.')
+
+        _logger.info(f'Updated {len(tx_ids_to_add)} transactions in {num_batches} batches.')
 
         # Pre-map outputs and inputs to their transaction IDs
         outputs_by_tx = {tx_id: [] for tx_id in self.txs.keys()}
