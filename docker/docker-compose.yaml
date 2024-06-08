@@ -1,0 +1,107 @@
+services:
+  htn-rest-server:
+    container_name: htn-rest-server
+    image: eritonica/htn-rest-server:latest
+    restart: unless-stopped
+    environment:
+      HTND_HOSTS_1: host.docker.interna:42420
+      SQL_URI: postgresql+asyncpg://postgres:postgres@postgresql:5432/postgres
+      ASYNC_SQL_URI: postgresql+asyncpg://postgres:postgres@postgresql:5432/postgres
+    ports:
+      - "8000:8000"
+    networks:
+      - htn_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  htn-socket-server:
+    container_name: htn-socket-server
+    image: eritonica/htn-socket-server:latest
+    restart: unless-stopped
+    environment:
+      HTND_HOSTS_1: host.docker.interna:42420
+      SQL_URI: postgresql+asyncpg://postgres:postgres@postgresql:5432/postgres
+    ports:
+      - "8001:8000"
+    networks:
+      - htn_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  htn-db-filler:
+    container_name: htn-db-filler
+    image: eritonica/htn-db-filler:latest
+    restart: unless-stopped
+    environment:
+      DEBUG: "true"
+      HTND_HOSTS_1: host.docker.internal:42420
+      SQL_URI: postgresql://postgres:postgres@postgresql:5432/postgres
+      BATCH_PROCESSING: "true"
+    ports:
+      - "8002:8000"
+    networks:
+      - htn_network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  postgresql:
+    container_name: postgresql
+    image: postgres:14-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgresql:/var/lib/postgresql/data
+    networks:
+      - htn_network
+
+  htn-explorer:
+    container_name: htn-explorer
+    image: eritonica/htn-explorer:latest
+    restart: unless-stopped
+    environment:
+      REACT_APP_API: http://htn-rest-server:8000
+      REACT_APP_SOCKET: wss://htn-socket-server:8001
+      REACT_APP_ADDRESSES: https://shitlist.hoosat.fi/balances.csv
+      REACT_APP_HOMEPAGE: https://network.hoosat.fi
+      REACT_APP_GITHUB: https://github.com/Hoosat-Oy/htn-explorer
+      REACT_APP_COINGECKO: https://www.coingecko.com/en/coins/hoosat-network
+    ports:
+      - "3000:3000"
+    networks:
+      - htn_network
+
+  htnd:
+    container_name: htnd
+    image: eritonica/htnd:latest
+    restart: unless-stopped
+    ports:
+      - "42420:42420"
+      - "42421:42421"
+    volumes:
+      - htnd:/.htnd/
+    command: ./HTND --utxoindex --saferpc
+    networks:
+      - htn_network
+
+volumes:
+  postgresql:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/st3/postgresql
+  htnd:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /mnt/st3/htnd
+
+networks:
+  htn_network:
+    driver: bridge
