@@ -102,12 +102,14 @@ class BlocksProcessor(object):
                 yield _, resp["getBlocksResponse"]["blocks"][i]
 
             # new low hash is the last hash of previous response
-            if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
+            if len(resp["getBlocksResponse"].get("blockHashes", [])) >= 1:
                 low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
                 await asyncio.sleep(1)
             else:
                 _logger.debug('No block hashes to set next low hash')
-                if(resp["getBlocksResponse"]["error"]['message'].startswith("Could not find")):
+                _logger.debug(resp)
+                error = resp["getBlocksResponse"].get("error", None)
+                if error is not None:
                     low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
                     self.synced = True
                 await asyncio.sleep(2)
