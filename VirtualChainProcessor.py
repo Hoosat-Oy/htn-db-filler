@@ -102,13 +102,16 @@ class VirtualChainProcessor(object):
                                           "includeAcceptedTransactionIds": True},
                                          timeout=120)
         # if there is a response, add to queue and set new startpoint
-        if resp["getVirtualSelectedParentChainFromBlockResponse"]:
+        error = resp["getVirtualSelectedParentChainFromBlockResponse"].get("error", None)
+        if error is None:
+            _logger.debug(resp["getVirtualSelectedParentChainFromBlockResponse"])
             _logger.info(f'Got VSPCFB response with: '
                           f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"]["addedChainBlockHashes"])}'
                           f' addedChainBlockHashes')
             self.virtual_chain_response = resp["getVirtualSelectedParentChainFromBlockResponse"]
         else:
-            _logger.info('Got empty VSPCFB response.')
+            _logger.debug('getVirtualSelectedParentChain error response:')
+            _logger.debug(error["message"])
             self.virtual_chain_response = None
 
         if self.virtual_chain_response is not None:

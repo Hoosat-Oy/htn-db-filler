@@ -35,7 +35,6 @@ services:
     environment:
       DEBUG: "true"
       HTND_HOSTS_1: host.docker.internal:42420
-      START_HASH: 436e1baedceb88b5cfe327ad55fca48e83b4751f5d81bc0cea74e9ec8d0221aa
       SQL_URI: postgresql://postgres:postgres@postgresql:5432/postgres
       BATCH_PROCESSING: "true"
     ports:
