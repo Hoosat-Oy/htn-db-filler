@@ -106,7 +106,10 @@ class BlocksProcessor(object):
                 low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
                 await asyncio.sleep(1)
             else:
-                _logger.debug('')
+                _logger.debug('No block hashes to set next low hash')
+                if(resp["getBlocksResponse"]["error"]['message'].startswith("Could not find")):
+                    low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
+                    self.synced = True
                 await asyncio.sleep(2)
 
             # if synced, poll blocks after 1s

@@ -67,7 +67,6 @@ async def main():
     if env_start_hash != None:
         start_hash = env_start_hash
 
-    next_start_point = start_hash
     _logger.info(f"Start hash: {start_hash}")
 
     batch_processing_str = os.getenv('BATCH_PROCESSING', 'False')  # Default to 'False' if not set
