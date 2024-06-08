@@ -4,7 +4,7 @@ services:
     image: eritonica/htn-rest-server:latest
     restart: unless-stopped
     environment:
-      HTND_HOSTS_1: host.docker.interna:42420
+      HTND_HOSTS_1: host.docker.internal:42420
       SQL_URI: postgresql+asyncpg://postgres:postgres@postgresql:5432/postgres
       ASYNC_SQL_URI: postgresql+asyncpg://postgres:postgres@postgresql:5432/postgres
     ports:
@@ -19,7 +19,7 @@ services:
     image: eritonica/htn-socket-server:latest
     restart: unless-stopped
     environment:
-      HTND_HOSTS_1: host.docker.interna:42420
+      HTND_HOSTS_1: host.docker.internal:42420
       SQL_URI: postgresql+asyncpg://postgres:postgres@postgresql:5432/postgres
     ports:
       - "8001:8000"
