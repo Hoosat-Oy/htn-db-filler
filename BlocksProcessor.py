@@ -40,7 +40,6 @@ class BlocksProcessor(object):
 
     async def loop(self, start_point):
         # go through each block added to DAG
-        global next_start_point
         async for block_hash, block in self.blockiter(start_point):
             # prepare add block and tx to database
             await self.__add_block_to_queue(block_hash, block)
