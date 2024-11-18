@@ -64,7 +64,8 @@ class BlocksProcessor(object):
         global task_runner
         for blockHash in block_hashes:
             while task_runner and not task_runner.done():
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
+            _logger.info(f'Starting VCP for {blockHash}')
             task_runner = asyncio.create_task(self.vcp.yield_to_database(blockHash))
 
     async def blockiter(self, start_point):
