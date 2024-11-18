@@ -98,16 +98,19 @@ class BlocksProcessor(object):
                 # ignore the first block, which is not start point. It is already processed by previous request
                 if blockHash == low_hash and blockHash != start_point:
                     continue
+
                 
+
                 # Make current yieldable blockHash the new low_hash
                 low_hash = blockHash
+
 
                 # yield blockhash and it's data
                 yield blockHash, resp["getBlocksResponse"]["blocks"][i]
 
             # if synced, poll blocks after 1s
             if self.synced:
-                _logger.debug(f'Waiting for the next blocks request.')
+                _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
 
     async def __add_tx_to_queue(self, block_hash, block):
