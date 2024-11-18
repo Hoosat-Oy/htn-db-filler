@@ -57,7 +57,6 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                _logger.info(f"Committed blocks\r\n{'\r\n'.join(map(str, block_hashes))}")
                 await self.handle_blocks_committed(block_hashes)
                 block_hashes = []
 
