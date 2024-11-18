@@ -61,7 +61,9 @@ class BlocksProcessor(object):
         this function is executed, when a new cluster of blocks were added to the database
         """
         for block in self.blocks_to_add:
+            _logger.info("Firing VirtualChainProcessor for %s block", block.hash)
             asyncio.create_task(self.vcp.yield_to_database(block.hash))
+            await asyncio.sleep(1)
 
     async def blockiter(self, start_point):
         """
