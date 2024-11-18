@@ -109,6 +109,7 @@ class BlocksProcessor(object):
 
             # if synced, poll blocks after 1s
             if self.synced:
+                _logger.debug(f'Waiting for the next blocks request. ({len(self.blocks_to_add)}/{CLUSTER_SIZE_SYNCED})')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
 
     async def __add_tx_to_queue(self, block_hash, block):
