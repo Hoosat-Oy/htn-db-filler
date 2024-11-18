@@ -98,8 +98,6 @@ class BlocksProcessor(object):
                 if blockHash == low_hash and blockHash != start_point:
                     continue
 
-                if blockHash == daginfo["getBlockDagInfoResponse"]["blockHashes"][CLUSTER_SIZE_SYNCED]
-
                 # yield blockhash and it's data
                 yield blockHash, resp["getBlocksResponse"]["blocks"][i]
 
