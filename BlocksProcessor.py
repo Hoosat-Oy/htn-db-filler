@@ -321,9 +321,6 @@ class BlocksProcessor(object):
                 session.add(_)
             try:
                 session.commit()
-
-                # reset queue
-                self.blocks_to_add = []
             except IntegrityError:
                 session.rollback()
                 _logger.error('Error adding group of blocks')
