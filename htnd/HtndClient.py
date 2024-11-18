@@ -30,22 +30,17 @@ class HtndClient(object):
             return False
 
     async def request(self, command, params=None, timeout=60, retry=0):
-        _logger.debug(f'Request start: {command}, {params}')
         for i in range(1 + retry):
             try:
                 with HtndThread(self.htnd_host, self.htnd_port) as t:
                     resp = await t.request(command, params, wait_for_response=True, timeout=timeout)
-                    _logger.debug('Request end')
                     return resp
             except HtndCommunicationError:
                 if i == retry:
-                    _logger.debug('Retries done.')
                     raise
                 else:
-                    _logger.debug('Wait for next retry.')
                     await asyncio.sleep(0.3)
             except Exception:
-                _logger.exception('I should not be here.')
                 raise
 
     async def notify(self, command, params, callback):
