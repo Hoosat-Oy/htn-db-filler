@@ -59,7 +59,7 @@ class BlocksProcessor(object):
         """
         this function is executed, when a new cluster of blocks were added to the database
         """
-        asyncio.run(self.vcp.yield_to_database(block_hash))
+        asyncio.create_task(self.vcp.yield_to_database(block_hash))
 
     async def blockiter(self, start_point):
         """
