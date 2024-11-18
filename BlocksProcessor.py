@@ -44,7 +44,6 @@ class BlocksProcessor(object):
             # prepare add block and tx to database
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
-            _logger.debug(f'Queued block: {block_hash}')
             # if cluster size is reached, insert to database
             if len(self.blocks_to_add) >= (CLUSTER_SIZE_INITIAL if not self.synced else CLUSTER_SIZE_SYNCED):
                 _logger.info(f'Committing blocks.')

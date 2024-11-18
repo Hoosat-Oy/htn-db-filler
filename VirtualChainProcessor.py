@@ -19,9 +19,8 @@ class VirtualChainProcessor(object):
     basically a temporary storage. This buffer should be processed AFTER the blocks and transactions are added.
     """
 
-    def __init__(self, client, start_point):
+    def __init__(self, client):
         self.virtual_chain_response = None
-        self.start_point = start_point
         self.client = client
 
     async def __update_transactions_in_db(self):
@@ -90,8 +89,7 @@ class VirtualChainProcessor(object):
             # Mark last known/processed as start point for the next query
             if last_known_chain_block:
                 KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
-                self.start_point = last_known_chain_block
-                await self.yield_to_database()
+                await self.yield_to_database(last_known_chain_block)
 
     async def yield_to_database(self, start_point):
         """
@@ -104,7 +102,6 @@ class VirtualChainProcessor(object):
                                          timeout=240)
         # if there is a response, add to queue and set new startpoint
         error = resp["getVirtualSelectedParentChainFromBlockResponse"].get("error", None)
-        _logger.debug(resp["getVirtualSelectedParentChainFromBlockResponse"])
         if error is None:
             _logger.info(f'Got getVirtualSelectedParentChainFromBlockRequest response with: '
                           f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("acceptedTransactionIds", []))}'
