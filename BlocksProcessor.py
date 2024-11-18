@@ -62,11 +62,12 @@ class BlocksProcessor(object):
         this function is executed, when a new cluster of blocks were added to the database
         """
         global task_runner
-        for blockHash in block_hashes:
-            while task_runner and not task_runner.done():
-                await asyncio.sleep(0.5)
-            _logger.info(f'Starting VCP for {blockHash}')
-            task_runner = asyncio.create_task(self.vcp.yield_to_database(blockHash))
+        for index, blockHash in enumerate(block_hashes):
+            if index % 5 == 0:  # Check if the index is divisible by 5 (i.e., every 5th block)
+                while task_runner and not task_runner.done():  # Wait for any previous task to finish
+                    await asyncio.sleep(0.5)
+                _logger.info(f'Starting VCP for {blockHash}')
+                task_runner = asyncio.create_task(self.vcp.yield_to_database(blockHash))
 
     async def blockiter(self, start_point):
         """

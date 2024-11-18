@@ -98,7 +98,6 @@ class VirtualChainProcessor(object):
         """
         Add known blocks to database
         """
-        _logger.info(f'Start processing transaction acceptance from {start_point}')
         resp = await self.client.request("getVirtualSelectedParentChainFromBlockRequest",
                                          {"startHash": start_point,
                                           "includeAcceptedTransactionIds": True},
@@ -106,7 +105,7 @@ class VirtualChainProcessor(object):
         # if there is a response, add to queue and set new startpoint
         error = resp["getVirtualSelectedParentChainFromBlockResponse"].get("error", None)
         if error is None:
-            _logger.info(f'Got getVirtualSelectedParentChainFromBlockRequest response with: '
+            _logger.info(f'Got VCP response with: '
                           f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("acceptedTransactionIds", []))}'
                           f' acceptedTransactionIds, '
                           f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("addedChainBlockHashes", []))}'
