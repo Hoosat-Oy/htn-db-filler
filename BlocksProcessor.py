@@ -54,8 +54,7 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                await self.handle_blocks_committed(block_hashes)
-                block_hashes = []
+                asyncio.create_task(self.handle_blocks_committed(block_hashes))
 
     async def handle_blocks_committed(self, block_hashes):
         """
@@ -68,6 +67,7 @@ class BlocksProcessor(object):
                     await asyncio.sleep(0.5)
                 _logger.info(f'Starting VCP for {blockHash}')
                 task_runner = asyncio.create_task(self.vcp.yield_to_database(blockHash))
+        block_hashes = []
 
     async def blockiter(self, start_point):
         """
