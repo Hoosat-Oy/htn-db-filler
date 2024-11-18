@@ -63,8 +63,7 @@ class BlocksProcessor(object):
         global task_runner
         if task_runner and not task_runner.done():
             return
-        self.vcp.set_new_start_point(block_hash)
-        task_runner = asyncio.create_task(self.vcp.yield_to_database())
+        task_runner = asyncio.create_task(self.vcp.yield_to_database(block_hash))
 
     async def blockiter(self, start_point):
         """

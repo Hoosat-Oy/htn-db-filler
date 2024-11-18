@@ -21,11 +21,8 @@ class VirtualChainProcessor(object):
 
     def __init__(self, client, start_point):
         self.virtual_chain_response = None
-        self.start_point = start_point
+        self.start_point = None
         self.client = client
-
-    def set_new_start_point(self, start_point): 
-        self.start_point = start_point
 
     async def __update_transactions_in_db(self):
         """
@@ -96,14 +93,13 @@ class VirtualChainProcessor(object):
                 self.start_point = last_known_chain_block
                 await self.yield_to_database()
 
-
-    async def yield_to_database(self):
+    async def yield_to_database(self, start_point):
         """
         Add known blocks to database
         """
-        _logger.info(f'Start processing transaction acceptance from {self.start_point}')
+        _logger.info(f'Start processing transaction acceptance from {start_point}')
         resp = await self.client.request("getVirtualSelectedParentChainFromBlockRequest",
-                                         {"startHash": self.start_point,
+                                         {"startHash": start_point,
                                           "includeAcceptedTransactionIds": True},
                                          timeout=240)
         # if there is a response, add to queue and set new startpoint
@@ -124,4 +120,4 @@ class VirtualChainProcessor(object):
             self.virtual_chain_response = None
 
         if self.virtual_chain_response is not None:
-            await self.__update_transactions_in_db()
+            await self.__update_transactions_in_db(True)
