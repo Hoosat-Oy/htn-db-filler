@@ -15,14 +15,14 @@ _logger = logging.getLogger(__name__)
 
 CLUSTER_SIZE_INITIAL = 300
 CLUSTER_SIZE_SYNCED = 5
-CLUSTER_WAIT_SECONDS = 4
+CLUSTER_WAIT_SECONDS = 6
 B_TREE_SIZE = 2500
 
 task_runner = None
 
 class BlocksProcessor(object):
     """
-    BlocksProcessor polls kaspad for blocks and adds the meta information and it's transactions into database.
+    BlocksProcessor polls hoosat for blocks and adds the meta information and it's transactions into database.
     """
 
     def __init__(self, client, vcp_instance, batch_processing = False, env_start_hash = None):
@@ -99,11 +99,8 @@ class BlocksProcessor(object):
                 if blockHash == low_hash and blockHash != start_point:
                     continue
 
-                
-
                 # Make current yieldable blockHash the new low_hash
                 low_hash = blockHash
-
 
                 # yield blockhash and it's data
                 yield blockHash, resp["getBlocksResponse"]["blocks"][i]
