@@ -83,7 +83,7 @@ class BlocksProcessor(object):
                                              timeout=60)
 
             # if it's not synced, get the tiphash, which has to be found for getting synced
-            if not self.synced and self.env_start_hash == None:
+            if not self.synced:
                 daginfo = await self.client.request("getBlockDagInfoRequest", {})
 
             # go through each block and yield
