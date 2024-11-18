@@ -46,9 +46,7 @@ class BlocksProcessor(object):
             await self.__add_tx_to_queue(block_hash, block)
             # if cluster size is reached, insert to database
             if len(self.blocks_to_add) >= (CLUSTER_SIZE_INITIAL if not self.synced else CLUSTER_SIZE_SYNCED):
-                _logger.info(f'Committing blocks.')
                 await self.commit_blocks()
-                _logger.info(f'Committing transactions.')
                 if self.batch_processing == False:
                     await self.commit_txs()
                 else: 
@@ -112,7 +110,7 @@ class BlocksProcessor(object):
 
             # if synced, poll blocks after 1s
             if self.synced:
-                _logger.info(f'Waiting for the next blocks request. ({len(self.blocks_to_add)}/{CLUSTER_SIZE_SYNCED})')
+                _logger.debug(f'Done with batch of blocks, waiting for next ({len(self.blocks_to_add)}/{CLUSTER_SIZE_SYNCED})')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
 
     async def __add_tx_to_queue(self, block_hash, block):
@@ -194,7 +192,7 @@ class BlocksProcessor(object):
                     session.rollback()
                     _logger.error(f'Error updating transactions in batch {i+1}/{num_batches}: {e}')
 
-        _logger.info(f'Updated {len(tx_ids_to_add)} transactions in {num_batches} batches.')
+        _logger.debug(f'Updated {len(tx_ids_to_add)} transactions in {num_batches} batches.')
 
         # Pre-map outputs and inputs to their transaction IDs
         outputs_by_tx = {tx_id: [] for tx_id in self.txs.keys()}
@@ -266,7 +264,7 @@ class BlocksProcessor(object):
 
             try:
                 session.commit()
-                _logger.info(f'Added {len(self.txs)} TXs to database')
+                _logger.debug(f'Added {len(self.txs)} TXs to database')
 
                 # reset queues
                 self.txs = {}
@@ -329,7 +327,7 @@ class BlocksProcessor(object):
                 session.add(_)
             try:
                 session.commit()
-                _logger.info(f'Added {len(self.blocks_to_add)} blocks to database. ')
+                _logger.debug(f'Added {len(self.blocks_to_add)} blocks to database. ')
 
                 # reset queue
                 self.blocks_to_add = []
