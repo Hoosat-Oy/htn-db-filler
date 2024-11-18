@@ -13,9 +13,9 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE_INITIAL = 300
-CLUSTER_SIZE_SYNCED = 5
-CLUSTER_WAIT_SECONDS = 12
+CLUSTER_SIZE_INITIAL = 600
+CLUSTER_SIZE_SYNCED = 300
+CLUSTER_WAIT_SECONDS = 350
 B_TREE_SIZE = 2500
 
 task_runner = None
@@ -38,8 +38,6 @@ class BlocksProcessor(object):
 
         # Did the loop already see the DAG tip
         self.synced = False
-        if env_start_hash is not None:
-            self.synced = True
 
     async def loop(self, start_point):
         # go through each block added to DAG
@@ -94,10 +92,13 @@ class BlocksProcessor(object):
                     if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
                         _logger.info('Found tip hash. Generator is synced now.')
                         self.synced = True
+                        break
 
                 # ignore the first block, which is not start point. It is already processed by previous request
                 if blockHash == low_hash and blockHash != start_point:
                     continue
+
+                if blockHash == daginfo["getBlockDagInfoResponse"]["blockHashes"][CLUSTER_SIZE_SYNCED]
 
                 # yield blockhash and it's data
                 yield blockHash, resp["getBlocksResponse"]["blocks"][i]
@@ -113,6 +114,7 @@ class BlocksProcessor(object):
             if self.synced:
                 _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
+                self.synced = False
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
