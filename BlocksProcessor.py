@@ -51,7 +51,7 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                _logger.info('Processed blocks and tx for %s start_point', start_point)
+                _logger.info('Processed blocks and tx for %s', block_hash)
                 asyncio.create_task(self.handle_blocks_commited(block_hash))
 
     async def handle_blocks_commited(self, block_hash):
