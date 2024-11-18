@@ -164,7 +164,7 @@ class BlocksProcessor(object):
         """
         Add all queued transactions and its in- and outputs to the database in batches to avoid exceeding PostgreSQL limits.
         """
-        BATCH_SIZE = 25  # Define a suitable batch size
+        BATCH_SIZE = 15  # Define a suitable batch size
 
         # First, handle updates for existing transactions.
         tx_ids_to_add = list(self.txs.keys())
