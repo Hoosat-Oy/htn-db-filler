@@ -97,8 +97,8 @@ class BlocksProcessor(object):
 
             # if synced, poll blocks after 1s
             if self.tipFound:
-                _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
                 low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
+                _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
                 self.tipFound = False
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
             else: 
