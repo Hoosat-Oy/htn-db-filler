@@ -53,7 +53,7 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                asyncio.create_task(self.handle_blocks_committed(block_hash))
+                asyncio.create_task(self.handle_blocks_commited(block_hash))
 
     async def handle_blocks_commited(self, block_hash):
         """
