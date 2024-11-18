@@ -23,7 +23,7 @@ docker build -t "$IMAGE_NAME:$TAG" .
 
 # Run the container from the new image
 echo "Running new container: $CONTAINER_NAME"
-docker run --name "$CONTAINER_NAME" -d "$IMAGE_NAME:$TAG" --network host --restart unless-stopped
+docker run --network host --restart unless-stopped --name "$CONTAINER_NAME" -d "$IMAGE_NAME:$TAG" 
 
 # Check if a container with the specified name already exists
 container_id=$(docker ps -aq -f "name=$CONTAINER_NAME")
