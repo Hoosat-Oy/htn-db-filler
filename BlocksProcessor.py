@@ -52,8 +52,8 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                _logger.info('Processed blocks and tx, latest %s', block_hash)
-                await self.handle_blocks_committed()
+                _logger.info("Committed %s blocks", len(self.blocks_to_add))
+                await self.handle_blocks_committed(block_hash)
 
     async def handle_blocks_committed(self):
         """
@@ -322,7 +322,6 @@ class BlocksProcessor(object):
                 session.add(_)
             try:
                 session.commit()
-                _logger.debug(f'Added {len(self.blocks_to_add)} blocks to database. ')
 
                 # reset queue
                 self.blocks_to_add = []
