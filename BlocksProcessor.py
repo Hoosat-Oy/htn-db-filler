@@ -101,18 +101,19 @@ class BlocksProcessor(object):
                 # yield blockhash and it's data
                 yield blockHash, resp["getBlocksResponse"]["blocks"][i]
 
-            # new low hash is the last hash of previous response
-            if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
-                low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
-            else:
-                _logger.debug('')
-                await asyncio.sleep(2)
-
+            
             # if synced, poll blocks after 1s
             if self.synced:
                 _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
+                low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
                 self.synced = False
+            else: 
+                if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
+                    low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
+                else:
+                    _logger.debug('')
+                    await asyncio.sleep(2)
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
