@@ -53,7 +53,7 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                await self.handle_blocks_commited(block_hash)
+                self.handle_blocks_commited(block_hash)
 
     async def handle_blocks_commited(self, block_hash):
         """
@@ -61,7 +61,7 @@ class BlocksProcessor(object):
         """
         global task_runner
         if task_runner and not task_runner.done():
-            return
+            await task_runner  
         task_runner = asyncio.create_task(self.vcp.yield_to_database(block_hash))
 
     async def blockiter(self, start_point):
