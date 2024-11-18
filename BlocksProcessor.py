@@ -54,6 +54,7 @@ class BlocksProcessor(object):
                     await self.batch_commit_txs()
                 _logger.info("Committed %s blocks", len(self.blocks_to_add))
                 await self.handle_blocks_committed(block_hash)
+                self.blocks_to_add = []
 
     async def handle_blocks_committed(self, block_hash):
         """

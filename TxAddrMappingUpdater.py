@@ -78,9 +78,8 @@ class TxAddrMappingUpdater(object):
             self.id_counter_inputs = max_in
             self.id_counter_outputs = max_out
 
-            _logger.debug(f"Next TX-Input ID: {self.id_counter_inputs}.")
-
-            _logger.debug(f"Next TX-Output ID: {self.id_counter_outputs}.")
+            # _logger.debug(f"Next TX-Input ID: {self.id_counter_inputs}.")
+            # _logger.debug(f"Next TX-Output ID: {self.id_counter_outputs}.")
 
             if last_id_counter_inputs + LIMIT > self.id_counter_inputs and \
                     last_id_counter_outputs + LIMIT > self.id_counter_outputs:
