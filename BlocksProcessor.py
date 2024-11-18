@@ -63,7 +63,7 @@ class BlocksProcessor(object):
         """
         global task_runner
         if task_runner and not task_runner.done():
-            return
+            await asyncio.sleep(1)
         task_runner = asyncio.create_task(self.vcp.yield_to_database(block_hashes[len(block_hashes) - 1]))
 
     async def blockiter(self, start_point):
@@ -83,7 +83,7 @@ class BlocksProcessor(object):
             # go through each block and yield
             for i, blockHash in enumerate(resp["getBlocksResponse"].get("blockHashes", [])):
                 if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
-                    _logger.info('Found tip hash')
+                    _logger.info(f'Found tip hash {daginfo["getBlockDagInfoResponse"]["tipHashes"][0]}')
                     self.tipFound = True
                     break
                 # ignore the first block, which is not start point. It is already processed by previous request
