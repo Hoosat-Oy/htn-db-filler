@@ -25,7 +25,7 @@ class BlocksProcessor(object):
     BlocksProcessor polls kaspad for blocks and adds the meta information and it's transactions into database.
     """
 
-    def __init__(self, client, vcp_instance, batch_processing = False, ):
+    def __init__(self, client, vcp_instance, batch_processing = False, env_start_hash = None):
         self.client = client
         self.blocks_to_add = []
 
@@ -33,6 +33,7 @@ class BlocksProcessor(object):
         self.txs_output = []
         self.txs_input = []
         self.vcp = vcp_instance
+        self.env_start_hash = env_start_hash
         self.batch_processing = batch_processing
 
         # Did the loop already see the DAG tip
@@ -82,7 +83,7 @@ class BlocksProcessor(object):
                                              timeout=60)
 
             # if it's not synced, get the tiphash, which has to be found for getting synced
-            if not self.synced:
+            if not self.synced and self.env_start_hash == None:
                 daginfo = await self.client.request("getBlockDagInfoRequest", {})
 
             # go through each block and yield

@@ -74,7 +74,7 @@ async def main():
 
     # create instances of blocksprocessor and virtualchainprocessor
     vcp = VirtualChainProcessor(client)
-    bp = BlocksProcessor(client, vcp, batch_processing)
+    bp = BlocksProcessor(client, vcp, batch_processing, env_start_hash)
 
     # start blocks processor working concurrent
     while True:
