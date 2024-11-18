@@ -21,7 +21,7 @@ class VirtualChainProcessor(object):
 
     def __init__(self, client, start_point):
         self.virtual_chain_response = None
-        self.start_point = None
+        self.start_point = start_point
         self.client = client
 
     async def __update_transactions_in_db(self):
