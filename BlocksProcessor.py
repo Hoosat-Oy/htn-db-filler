@@ -51,6 +51,7 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
+                _logger.info('Processed blocks and tx for %s start_point', start_point)
                 asyncio.create_task(self.handle_blocks_commited(block_hash))
 
     async def handle_blocks_commited(self, block_hash):
@@ -60,6 +61,7 @@ class BlocksProcessor(object):
         global task_runner
         while task_runner and not task_runner.done():
             await asyncio.sleep(0.1) 
+        _logger.info('Starting a new virtual chain processor')
         task_runner = asyncio.create_task(self.vcp.yield_to_database(block_hash))
 
     async def blockiter(self, start_point):
