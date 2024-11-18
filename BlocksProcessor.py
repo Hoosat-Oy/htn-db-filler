@@ -57,7 +57,7 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                _logger.info("Committed blocks")
+                _logger.info(f"Committed blocks {', '.join(map(str, block_hashes))}")
                 await self.handle_blocks_committed(block_hashes)
                 block_hashes = []
 
@@ -319,7 +319,6 @@ class BlocksProcessor(object):
         # insert blocks
         with session_maker() as session:
             for _ in self.blocks_to_add:
-                _logger.debug("Committing: %s", _.hash)
                 session.add(_)
             try:
                 session.commit()
