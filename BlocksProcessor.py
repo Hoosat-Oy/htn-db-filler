@@ -97,16 +97,12 @@ class BlocksProcessor(object):
                 # ignore the first block, which is not start point. It is already processed by previous request
                 if blockHash == low_hash and blockHash != start_point:
                     continue
+                
+                # Make current yieldable blockHash the new low_hash
+                low_hash = blockHash
 
                 # yield blockhash and it's data
                 yield blockHash, resp["getBlocksResponse"]["blocks"][i]
-
-            # new low hash is the last hash of previous response
-            if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
-                low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
-            else:
-                _logger.debug('')
-                await asyncio.sleep(2)
 
             # if synced, poll blocks after 1s
             if self.synced:
