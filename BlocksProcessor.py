@@ -13,9 +13,8 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE_INITIAL = 600
-CLUSTER_SIZE_SYNCED = 300
-CLUSTER_WAIT_SECONDS = 350
+CLUSTER_SIZE = 50
+CLUSTER_WAIT_SECONDS = 15
 B_TREE_SIZE = 2500
 
 task_runner = None
@@ -37,7 +36,7 @@ class BlocksProcessor(object):
         self.batch_processing = batch_processing
 
         # Did the loop already see the DAG tip
-        self.synced = False
+        self.tipFound = False
 
     async def loop(self, start_point):
         # go through each block added to DAG
@@ -49,7 +48,7 @@ class BlocksProcessor(object):
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
             # if cluster size is reached, insert to database
-            if len(self.blocks_to_add) >= (CLUSTER_SIZE_INITIAL if not self.synced else CLUSTER_SIZE_SYNCED):
+            if len(self.blocks_to_add) >= CLUSTER_SIZE:
                 await self.commit_blocks()
                 if self.batch_processing == False:
                     await self.commit_txs()
@@ -81,33 +80,27 @@ class BlocksProcessor(object):
                                              },
                                              timeout=60)
 
-            # if it's not synced, get the tiphash, which has to be found for getting synced
-            if not self.synced:
-                daginfo = await self.client.request("getBlockDagInfoRequest", {})
+            # Get the tiphash, which past we cannot process blocks.
+            daginfo = await self.client.request("getBlockDagInfoRequest", {})
 
             # go through each block and yield
             for i, blockHash in enumerate(resp["getBlocksResponse"].get("blockHashes", [])):
-
-                if not self.synced:
-                    if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
-                        _logger.info('Found tip hash. Generator is synced now.')
-                        self.synced = True
-                        break
-
+                if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
+                    _logger.info('Found tip hash. Generator is synced now.')
+                    self.tipFound = True
+                    break
                 # ignore the first block, which is not start point. It is already processed by previous request
                 if blockHash == low_hash and blockHash != start_point:
                     continue
-
                 # yield blockhash and it's data
                 yield blockHash, resp["getBlocksResponse"]["blocks"][i]
 
-            
             # if synced, poll blocks after 1s
-            if self.synced:
+            if self.tipFound:
                 _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
                 low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
+                self.tipFound = False
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
-                self.synced = False
             else: 
                 if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
                     low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
