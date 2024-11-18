@@ -40,6 +40,7 @@ class BlocksProcessor(object):
 
     async def loop(self, start_point):
         # go through each block added to DAG
+        _logger.info('Start processing blocks from %s', start_point)
         async for block_hash, block in self.blockiter(start_point):
             # prepare add block and tx to database
             await self.__add_block_to_queue(block_hash, block)
@@ -51,18 +52,14 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                _logger.info('Processed blocks and tx for %s', block_hash)
-                asyncio.create_task(self.handle_blocks_commited(block_hash))
+                _logger.info('Processed blocks and tx, latest %s', block_hash)
+                await self.handle_blocks_committed(block_hash)
 
-    async def handle_blocks_commited(self, block_hash):
+    async def handle_blocks_committed(self, block_hash):
         """
         this function is executed, when a new cluster of blocks were added to the database
         """
-        global task_runner
-        while task_runner and not task_runner.done():
-            await asyncio.sleep(0.1) 
-        _logger.info('Starting a new virtual chain processor')
-        task_runner = asyncio.create_task(self.vcp.yield_to_database(block_hash))
+        asyncio.run(self.vcp.yield_to_database(block_hash))
 
     async def blockiter(self, start_point):
         """
@@ -103,7 +100,6 @@ class BlocksProcessor(object):
                 await asyncio.sleep(1)
             else:
                 _logger.debug('No block hashes to set next low hash')
-                _logger.debug(resp)
                 error = resp["getBlocksResponse"].get("error", None)
                 if error is not None:
                     low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
@@ -112,7 +108,6 @@ class BlocksProcessor(object):
 
             # if synced, poll blocks after 1s
             if self.synced:
-                _logger.debug(f'Done with batch of blocks, waiting for next ({len(self.blocks_to_add)}/{CLUSTER_SIZE_SYNCED})')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
 
     async def __add_tx_to_queue(self, block_hash, block):
@@ -194,8 +189,6 @@ class BlocksProcessor(object):
                     session.rollback()
                     _logger.error(f'Error updating transactions in batch {i+1}/{num_batches}: {e}')
 
-        _logger.debug(f'Updated {len(tx_ids_to_add)} transactions in {num_batches} batches.')
-
         # Pre-map outputs and inputs to their transaction IDs
         outputs_by_tx = {tx_id: [] for tx_id in self.txs.keys()}
         for output in self.txs_output:
@@ -266,7 +259,6 @@ class BlocksProcessor(object):
 
             try:
                 session.commit()
-                _logger.debug(f'Added {len(self.txs)} TXs to database')
 
                 # reset queues
                 self.txs = {}
