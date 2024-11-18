@@ -38,6 +38,8 @@ class BlocksProcessor(object):
 
         # Did the loop already see the DAG tip
         self.synced = False
+        if env_start_hash is not None:
+            self.synced = True
 
     async def loop(self, start_point):
         # go through each block added to DAG
