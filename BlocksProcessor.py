@@ -55,7 +55,7 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                _logger.info("Committed %s blocks, last one %s", len(block_hashes), block_hashes[len(block_hashes) - 1])
+                _logger.info("Committed blocks")
                 await self.handle_blocks_committed(block_hashes)
                 block_hashes = []
 
@@ -106,7 +106,7 @@ class BlocksProcessor(object):
 
             # if synced, poll blocks after 1s
             if self.synced:
-                _logger.debug(f'Waiting for the next blocks request. ({len(self.blocks_to_add)}/{CLUSTER_SIZE_SYNCED})')
+                _logger.debug(f'Waiting for the next blocks request.')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
 
     async def __add_tx_to_queue(self, block_hash, block):
@@ -317,15 +317,17 @@ class BlocksProcessor(object):
         # insert blocks
         with session_maker() as session:
             for _ in self.blocks_to_add:
+                _logger.debug("Committing: %s", _.hash)
                 session.add(_)
             try:
                 session.commit()
+                # reset queue
+                self.blocks_to_add = []
             except IntegrityError:
                 session.rollback()
                 _logger.error('Error adding group of blocks')
                 raise
         
-        self.blocks_to_add = []
 
     def is_tx_id_in_queue(self, tx_id):
         """
