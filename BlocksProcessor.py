@@ -54,7 +54,7 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                _logger.info("Committed %s blocks", len(block_hashes))
+                _logger.info("Committed %s blocks, last one %s", len(block_hashes), block_hashes[len(block_hashes) - 1])
                 await self.handle_blocks_committed(block_hashes)
                 block_hashes = []
 
@@ -101,15 +101,10 @@ class BlocksProcessor(object):
                 yield _, resp["getBlocksResponse"]["blocks"][i]
 
             # new low hash is the last hash of previous response
-            if len(resp["getBlocksResponse"].get("blockHashes", [])) >= 1:
+            if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
                 low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
-                await asyncio.sleep(1)
             else:
-                _logger.debug('No block hashes to set next low hash')
-                error = resp["getBlocksResponse"].get("error", None)
-                if error is not None:
-                    low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
-                    self.synced = True
+                _logger.debug('')
                 await asyncio.sleep(2)
 
             # if synced, poll blocks after 1s
