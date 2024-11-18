@@ -62,7 +62,7 @@ class BlocksProcessor(object):
         this function is executed, when a new cluster of blocks were added to the database
         """
         global task_runner
-        if task_runner and not task_runner.done():
+        while task_runner and not task_runner.done():
             await asyncio.sleep(1)
         task_runner = asyncio.create_task(self.vcp.yield_to_database(block_hashes[len(block_hashes) - 1]))
 
