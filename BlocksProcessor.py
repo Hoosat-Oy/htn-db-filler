@@ -41,7 +41,9 @@ class BlocksProcessor(object):
     async def loop(self, start_point):
         # go through each block added to DAG
         _logger.info('Start processing blocks from %s', start_point)
+        block_hashes = []
         async for block_hash, block in self.blockiter(start_point):
+            block_hashes.append(block_hash)
             # prepare add block and tx to database
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
@@ -53,16 +55,16 @@ class BlocksProcessor(object):
                 else: 
                     await self.batch_commit_txs()
                 _logger.info("Committed %s blocks", len(self.blocks_to_add))
-                await self.handle_blocks_committed()
-                self.blocks_to_add = []
+                await self.handle_blocks_committed(block_hashes)
+                block_hashes = []
 
-    async def handle_blocks_committed(self):
+    async def handle_blocks_committed(self, block_hashes):
         """
         this function is executed, when a new cluster of blocks were added to the database
         """
-        for block in self.blocks_to_add:
-            _logger.info("Firing VirtualChainProcessor for %s block", block.hash)
-            asyncio.create_task(self.vcp.yield_to_database(block.hash))
+        for hash in block_hashes:
+            _logger.info("Firing VirtualChainProcessor for %s block", hash)
+            asyncio.create_task(self.vcp.yield_to_database(hash))
             await asyncio.sleep(1)
 
     async def blockiter(self, start_point):
@@ -329,6 +331,8 @@ class BlocksProcessor(object):
                 session.rollback()
                 _logger.error('Error adding group of blocks')
                 raise
+        
+        self.blocks_to_add = []
 
     def is_tx_id_in_queue(self, tx_id):
         """
