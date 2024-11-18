@@ -55,7 +55,7 @@ class BlocksProcessor(object):
                 else: 
                     await self.batch_commit_txs()
                 _logger.info("Committed %s blocks", len(block_hashes))
-                await self.handle_blocks_committed(block_hashes)
+                asyncio.create_task(self.handle_blocks_committed(block_hashes))
                 block_hashes = []
 
     async def handle_blocks_committed(self, block_hashes):
@@ -63,8 +63,7 @@ class BlocksProcessor(object):
         this function is executed, when a new cluster of blocks were added to the database
         """
         for hash in block_hashes:
-            asyncio.create_task(self.vcp.yield_to_database(hash))
-            await asyncio.sleep(30)
+            await self.vcp.yield_to_database(hash)
 
     async def blockiter(self, start_point):
         """
