@@ -117,4 +117,4 @@ class VirtualChainProcessor(object):
             self.virtual_chain_response = None
 
         if self.virtual_chain_response is not None:
-            await self.__update_transactions_in_db(True)
+            await self.__update_transactions_in_db()
