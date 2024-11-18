@@ -13,8 +13,8 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE = 50
-CLUSTER_WAIT_SECONDS = 15
+CLUSTER_SIZE = 150
+CLUSTER_WAIT_SECONDS = 190
 B_TREE_SIZE = 2500
 
 task_runner = None
@@ -72,6 +72,7 @@ class BlocksProcessor(object):
         """
         low_hash = start_point
         while True:
+            daginfo = await self.client.request("getBlockDagInfoRequest", {})
             resp = await self.client.request("getBlocksRequest",
                                              params={
                                                  "lowHash": low_hash,
@@ -79,14 +80,10 @@ class BlocksProcessor(object):
                                                  "includeBlocks": True
                                              },
                                              timeout=60)
-
-            # Get the tiphash, which past we cannot process blocks.
-            daginfo = await self.client.request("getBlockDagInfoRequest", {})
-
             # go through each block and yield
             for i, blockHash in enumerate(resp["getBlocksResponse"].get("blockHashes", [])):
                 if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
-                    _logger.info('Found tip hash. Generator is synced now.')
+                    _logger.info('Found tip hash')
                     self.tipFound = True
                     break
                 # ignore the first block, which is not start point. It is already processed by previous request
@@ -157,7 +154,7 @@ class BlocksProcessor(object):
         """
         Add all queued transactions and its in- and outputs to the database in batches to avoid exceeding PostgreSQL limits.
         """
-        BATCH_SIZE = 15  # Define a suitable batch size
+        BATCH_SIZE = 5  # Define a suitable batch size
 
         # First, handle updates for existing transactions.
         tx_ids_to_add = list(self.txs.keys())
