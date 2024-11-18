@@ -87,9 +87,12 @@ class VirtualChainProcessor(object):
             self.virtual_chain_response = None
             
             # Mark last known/processed as start point for the next query
-            if last_known_chain_block:
-                KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
-                await self.yield_to_database(last_known_chain_block)
+            # if last_known_chain_block:
+            #     KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
+            #     await self.yield_to_database(last_known_chain_block)
+            
+            # Clear the current response
+            self.virtual_chain_response = None
 
     async def yield_to_database(self, start_point):
         """
