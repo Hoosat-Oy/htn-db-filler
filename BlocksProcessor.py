@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
 from dbsession import session_maker
+from models.Balance import Balance
 from models.Block import Block
 from models.Transaction import Transaction, TransactionOutput, TransactionInput
 from utils.Event import Event
@@ -24,7 +25,7 @@ class BlocksProcessor(object):
     BlocksProcessor polls hoosat for blocks and adds the meta information and it's transactions into database.
     """
 
-    def __init__(self, client, vcp_instance, batch_processing = False, env_start_hash = None):
+    def __init__(self, client, vcp_instance, batch_processing = False, env_start_hash = None, env_enable_balance = False):
         self.client = client
         self.blocks_to_add = []
 
@@ -33,6 +34,7 @@ class BlocksProcessor(object):
         self.txs_input = []
         self.vcp = vcp_instance
         self.env_start_hash = env_start_hash
+        self.env_enable_balance = env_enable_balance
         self.batch_processing = batch_processing
 
         # Did the loop already see the DAG tip
@@ -108,17 +110,36 @@ class BlocksProcessor(object):
                     _logger.debug('')
                     await asyncio.sleep(2)
 
+    async def _update_balance(self, address, amount):
+        """
+        Updates the balance for a given address.
+        """
+        with session_maker() as session:
+            balance = session.query(Balance).filter(Balance.script_public_key_address == address).first()
+
+            if balance:
+                balance.balance += amount
+            else:
+                # If the address does not exist, create a new entry
+                balance = Balance(script_public_key_address=address, balance=amount)
+                session.add(balance)
+
+            try:
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                _logger.error(f"Error updating balance for address {address}: {e}")
+
     async def __add_tx_to_queue(self, block_hash, block):
         """
         Adds block's transactions to queue. This is only prepartion without commit!
         """
-        # Go through blocks
         if block.get("transactions") is not None:
             for transaction in block["transactions"]:
                 if transaction.get("verboseData") is not None:
                     tx_id = transaction["verboseData"]["transactionId"]
+
                     # Check, that the transaction isn't prepared yet. Otherwise ignore
-                    # Often transactions are added in more than one block
                     if not self.is_tx_id_in_queue(tx_id):
                         # Add transaction
                         self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
@@ -128,30 +149,51 @@ class BlocksProcessor(object):
                                                     block_hash=[transaction["verboseData"]["blockHash"]],
                                                     block_time=int(transaction["verboseData"]["blockTime"]))
 
-                        # Add transactions output
+                        # Process the outputs (increase balance)
                         for index, out in enumerate(transaction.get("outputs", [])):
+                            address = out["verboseData"]["scriptPublicKeyAddress"]
+                            amount = out["amount"]
+                            if self.env_enable_balance == True: 
+                                # Increase balance for the input address
+                                await self._update_balance(address, amount)
+
                             self.txs_output.append(TransactionOutput(transaction_id=tx_id,
                                                                     index=index,
-                                                                    amount=out["amount"],
-                                                                    script_public_key=out["scriptPublicKey"][
-                                                                        "scriptPublicKey"],
-                                                                    script_public_key_address=out["verboseData"][
-                                                                        "scriptPublicKeyAddress"],
-                                                                    script_public_key_type=out["verboseData"][
-                                                                        "scriptPublicKeyType"]))
-                        # Add transactions input
+                                                                    amount=amount,
+                                                                    script_public_key=out["scriptPublicKey"]["scriptPublicKey"],
+                                                                    script_public_key_address=address,
+                                                                    script_public_key_type=out["verboseData"]["scriptPublicKeyType"]))
+
+                        # Process the inputs (decrease balance)
                         for index, tx_in in enumerate(transaction.get("inputs", [])):
+                            if self.env_enable_balance:
+                                prev_out_tx_id = tx_in["previousOutpoint"]["transactionId"]
+                                prev_out_index = int(tx_in["previousOutpoint"].get("index", 0))
+
+                                # Query the previous transaction output (this is where the input came from)
+                                with session_maker() as session:
+                                    prev_output = session.query(TransactionOutput).filter_by(
+                                        transaction_id=prev_out_tx_id,
+                                        index=prev_out_index
+                                    ).first()
+
+                                    if prev_output:
+                                        prev_out_address = prev_output.script_public_key_address
+                                        prev_amount = prev_output.amount
+
+                                        # Decrease balance for the input address
+                                        await self._update_balance(prev_out_address, -prev_amount)
+
                             self.txs_input.append(TransactionInput(transaction_id=tx_id,
-                                                                index=index,
-                                                                previous_outpoint_hash=tx_in["previousOutpoint"][
-                                                                    "transactionId"],
-                                                                previous_outpoint_index=int(tx_in["previousOutpoint"].get(
-                                                                    "index", 0)),
-                                                                signature_script=tx_in["signatureScript"],
-                                                                sig_op_count=tx_in.get("sigOpCount", 0)))
+                                                                    index=index,
+                                                                    previous_outpoint_hash=prev_out_tx_id,
+                                                                    previous_outpoint_index=prev_out_index,
+                                                                    signature_script=tx_in["signatureScript"],
+                                                                    sig_op_count=tx_in.get("sigOpCount", 0)))
                     else:
                         # If the block if already in the Queue, merge the block_hashes.
                         self.txs[tx_id].block_hash = list(set(self.txs[tx_id].block_hash + [block_hash]))
+
 
     async def batch_commit_txs(self):
         """

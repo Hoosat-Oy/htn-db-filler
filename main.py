@@ -72,9 +72,11 @@ async def main():
     batch_processing_str = os.getenv('BATCH_PROCESSING', 'False')  # Default to 'False' if not set
     batch_processing = batch_processing_str.lower() in ['true', '1', 't', 'y', 'yes']
 
+    env_enable_balance = os.getenv('BALANCE_ENABLED', False)
+
     # create instances of blocksprocessor and virtualchainprocessor
     vcp = VirtualChainProcessor(client)
-    bp = BlocksProcessor(client, vcp, batch_processing, env_start_hash)
+    bp = BlocksProcessor(client, vcp, batch_processing, env_start_hash, env_enable_balance)
 
     # start blocks processor working concurrent
     while True:
