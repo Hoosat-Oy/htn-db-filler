@@ -1,32 +1,43 @@
-Hoosat Network Database Filler
+# Hoosat Network Database Filler
 
-The Hoosat Network database filler is the tool to move information from the HTN blockchain to PostgreSQL database. It has been extensively modified from IAm3R's original code. Like batch processing to avoid crashing the db filler on big transaction blocks. 
+The **Hoosat Network Database Filler** is a tool designed to transfer data from the HTN blockchain to a PostgreSQL database. This tool has been heavily modified from the original code by IAm3R, with enhancements to support batch processing, which helps prevent the database filler from crashing when processing large transaction blocks.
 
-**There are few optional Environment values:**
-  
-1. Enabling transaction batch processing:
-```
-BATCH_PROCESSING=true
-```
+## Optional Environment Variables
 
-2. Starting point of processing:
-```
-START_HASH=HASHVALUE
-```
-**Remark** HTN database filler is one of the first database fillers that can crawl the blockchain from genesis to the database.
+The following environment variables can be set to customize the behavior of the database filler:
 
-3. Enable balance processing:
-```
-BALANCE_ENABLED=true
-```
+1. **Enable Transaction Batch Processing:**
+   To prevent database overload during large transactions, you can enable batch processing:
+   ```
+   BATCH_PROCESSING=true
+   ```
 
-4. Enable updating balances from the database when filler is started:
-```
-UPDATE_BALANCE_ON_BOOT=true
-```
+2. **Set the Starting Point for Processing:**
+   If you need to start processing from a specific block, specify the hash of the block:
+   ```
+   START_HASH=HASHVALUE
+   ```
+   **Note:** The HTN Database Filler is one of the first tools capable of crawling the blockchain from genesis (the first block) and storing it in the database.
 
-**Modifications**
-1. Fix big transaction processing.
-2. Add batch processing of transactions.
-3. Add starting point for processing. 
-4. Add balance processing. 
+3. **Enable Balance Processing:**
+   Enable this option if you wish to process account balances:
+   ```
+   BALANCE_ENABLED=true
+   ```
+
+4. **Update Balances on Boot:**
+   If you want the filler to update the account balances from the database when it starts, enable this option:
+   ```
+   UPDATE_BALANCE_ON_BOOT=true
+   ```
+
+## Modifications & Improvements
+
+The following key modifications have been made to improve the functionality and efficiency of the database filler:
+
+1. **Improved Large Transaction Handling:** Enhanced handling of large transactions to prevent failures during processing.
+2. **Batch Processing of Transactions:** Introduced batch processing to handle multiple transactions more efficiently.
+3. **Customizable Starting Point:** Added the ability to specify a block's hash as the starting point for processing.
+4. **Balance Processing Support:** Added functionality for processing account balances and updating them when needed.
+
+With these improvements, the Hoosat Network Database Filler provides a more robust and flexible solution for managing blockchain data in a PostgreSQL environment.
