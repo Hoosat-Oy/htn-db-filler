@@ -7,7 +7,6 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
 from dbsession import session_maker
-from models.Balance import Balance
 from models.Block import Block
 from models.Transaction import Transaction, TransactionOutput, TransactionInput
 from utils.Event import Event
@@ -25,9 +24,10 @@ class BlocksProcessor(object):
     BlocksProcessor polls hoosat for blocks and adds the meta information and it's transactions into database.
     """
 
-    def __init__(self, client, vcp_instance, batch_processing = False, env_start_hash = None, env_enable_balance = False):
+    def __init__(self, client, vcp_instance, balance, batch_processing = False, env_start_hash = None, env_enable_balance = False):
         self.client = client
         self.blocks_to_add = []
+        self.balance = balance
 
         self.txs = {}
         self.txs_output = []
@@ -110,52 +110,6 @@ class BlocksProcessor(object):
                     _logger.debug('')
                     await asyncio.sleep(2)
 
-    async def _get_balance_from_rpc(self, address):
-        """
-        Fetch balance for the given address from the RPC node.
-        """
-        try:
-            response = await self.client.request("getBalanceByAddressRequest", {"address": address})
-
-            get_balance_response = response.get("getBalanceByAddressResponse", {})
-            balance = get_balance_response.get("balance", 0)
-            error = get_balance_response.get("error", None)
-
-            if error:
-                _logger.error(f"Error fetching balance for address {address}: {error}")
-                return 0
-            
-            if balance is not None:
-                return int(balance)
-            
-            _logger.error(f"Balance not found for address {address}: {response}")
-            return 0
-        
-        except Exception as e:
-            _logger.error(f"Error fetching balance for address {address}: {e}")
-            return 0
-
-    async def _update_balance_from_rpc(self, address):
-        with session_maker() as session:
-            try:
-                balance = session.query(Balance).filter(Balance.script_public_key_address == address).first()
-                address_balance = await self._get_balance_from_rpc(address) 
-                _logger.debug(f"address_balance: {address_balance}")
-
-                if address_balance is None:
-                    return
-                
-                if balance: 
-                    balance.balance = address_balance
-                else: 
-                    balance = Balance(script_public_key_address=address, balance=address_balance)
-                    session.add(balance)
-
-                session.commit() 
-            except Exception as e:
-                _logger.error(f"Error fetching balance from the node for address {address}: {e}")
-                return 
-
     async def __add_tx_to_queue(self, block_hash, block):
         """
         Adds block's transactions to queue. This is only prepartion without commit!
@@ -174,13 +128,15 @@ class BlocksProcessor(object):
                                                     mass=transaction["verboseData"].get("mass"),
                                                     block_hash=[transaction["verboseData"]["blockHash"]],
                                                     block_time=int(transaction["verboseData"]["blockTime"]))
-
+                        # Track unique addresses to prevent duplicates
+                        unique_addresses = set()
                         # Process the outputs (increase balance)
                         for index, out in enumerate(transaction.get("outputs", [])):
                             address = out["verboseData"]["scriptPublicKeyAddress"]
                             amount = out["amount"]
-                            if self.env_enable_balance == True: 
-                                await self._update_balance_from_rpc(address)
+                            if address in unique_addresses:
+                                continue
+                            unique_addresses.add(address)
 
                             self.txs_output.append(TransactionOutput(transaction_id=tx_id,
                                                                     index=index,
@@ -191,7 +147,7 @@ class BlocksProcessor(object):
 
                         # Process the inputs (decrease balance)
                         for index, tx_in in enumerate(transaction.get("inputs", [])):
-                            if self.env_enable_balance:
+                            if self.env_enable_balance != False: 
                                 prev_out_tx_id = tx_in["previousOutpoint"]["transactionId"]
                                 prev_out_index = int(tx_in["previousOutpoint"].get("index", 0))
 
@@ -203,7 +159,10 @@ class BlocksProcessor(object):
                                     ).first()
 
                                     if prev_output:
-                                        await self._update_balance_from_rpc(prev_output.script_public_key_address)
+                                        address = prev_output.script_public_key_address
+                                        if address in unique_addresses:
+                                            continue
+                                        unique_addresses.add(address)
 
                             self.txs_input.append(TransactionInput(transaction_id=tx_id,
                                                                     index=index,
@@ -211,6 +170,10 @@ class BlocksProcessor(object):
                                                                     previous_outpoint_index=prev_out_index,
                                                                     signature_script=tx_in["signatureScript"],
                                                                     sig_op_count=tx_in.get("sigOpCount", 0)))
+                        
+                            if self.env_enable_balance != False:
+                                for address in unique_addresses:
+                                    await self.balance.update_balance_from_rpc(address)
                     else:
                         # If the block if already in the Queue, merge the block_hashes.
                         self.txs[tx_id].block_hash = list(set(self.txs[tx_id].block_hash + [block_hash]))

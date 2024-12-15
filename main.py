@@ -8,6 +8,7 @@ import time
 from BlocksProcessor import BlocksProcessor
 from TxAddrMappingUpdater import TxAddrMappingUpdater
 from VirtualChainProcessor import VirtualChainProcessor
+from BalanceProcessor import BalanceProcessor
 from dbsession import create_all
 from helper import KeyValueStore
 from htnd.HtndMultiClient import HtndMultiClient
@@ -73,10 +74,12 @@ async def main():
     batch_processing = batch_processing_str.lower() in ['true', '1', 't', 'y', 'yes']
 
     env_enable_balance = os.getenv('BALANCE_ENABLED', False)
-
+    bap = BalanceProcessor(client)
+    if env_enable_balance != False: 
+        await bap.update_all_balances()
     # create instances of blocksprocessor and virtualchainprocessor
     vcp = VirtualChainProcessor(client)
-    bp = BlocksProcessor(client, vcp, batch_processing, env_start_hash, env_enable_balance)
+    bp = BlocksProcessor(client, vcp, bap, batch_processing, env_start_hash, env_enable_balance)
 
     # start blocks processor working concurrent
     while True:
