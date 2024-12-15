@@ -17,7 +17,7 @@ The following environment variables can be set to customize the behavior of the 
    ```
    START_HASH=HASHVALUE
    ```
-   **Note:** The HTN Database Filler is one of the first tools capable of crawling the blockchain from genesis (the first block) and storing it in the database.
+   **Note:** The HTN Database Filler is one of the first tools capable of crawling the blockchain from genesis (the first block) and storing it in the database in the Kaspaverse.
 
 3. **Enable Balance Processing:**
    Enable this option if you wish to process account balances:
