@@ -115,49 +115,46 @@ class BlocksProcessor(object):
         Fetch balance for the given address from the RPC node.
         """
         try:
-            response = await self.client.request("getBalanceByAddress", {"address": address})
+            response = await self.client.request("getBalanceByAddressRequest", {"address": address})
 
             get_balance_response = response.get("getBalanceByAddressResponse", {})
-            balance = get_balance_response.get("balance", None)
+            balance = get_balance_response.get("balance", 0)
             error = get_balance_response.get("error", None)
 
             if error:
                 _logger.error(f"Error fetching balance for address {address}: {error}")
-                return None
+                return 0
             
             if balance is not None:
-                return float(balance) 
+                return int(balance)
             
             _logger.error(f"Balance not found for address {address}: {response}")
-            return None
+            return 0
         
         except Exception as e:
             _logger.error(f"Error fetching balance for address {address}: {e}")
-            return None
+            return 0
 
-    async def _update_balance(self, address, amount):
-        """
-        Updates the balance for a given address.
-        """
+    async def _update_balance_from_rpc(self, address):
         with session_maker() as session:
-            balance = session.query(Balance).filter(Balance.script_public_key_address == address).first()
-
-            if balance:
-                balance.balance += amount
-            else:
-                address_balance = await self._get_balance_from_rpc(address)
-                if address_balance: 
-                    balance = Balance(script_public_key_address=address, balance=address_balance + amount)
-                    session.add(balance)
-                else:
-                    balance = Balance(script_public_key_address=address, balance=amount)
-                    session.add(balance)
-
             try:
-                session.commit()
+                balance = session.query(Balance).filter(Balance.script_public_key_address == address).first()
+                address_balance = await self._get_balance_from_rpc(address) 
+                _logger.debug(f"address_balance: {address_balance}")
+
+                if address_balance is None:
+                    return
+                
+                if balance: 
+                    balance.balance = address_balance
+                else: 
+                    balance = Balance(script_public_key_address=address, balance=address_balance)
+                    session.add(balance)
+
+                session.commit() 
             except Exception as e:
-                session.rollback()
-                _logger.error(f"Error updating balance for address {address}: {e}")
+                _logger.error(f"Error fetching balance from the node for address {address}: {e}")
+                return 
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
@@ -183,8 +180,7 @@ class BlocksProcessor(object):
                             address = out["verboseData"]["scriptPublicKeyAddress"]
                             amount = out["amount"]
                             if self.env_enable_balance == True: 
-                                # Increase balance for the input address
-                                await self._update_balance(address, amount)
+                                await self._update_balance_from_rpc(address)
 
                             self.txs_output.append(TransactionOutput(transaction_id=tx_id,
                                                                     index=index,
@@ -207,11 +203,7 @@ class BlocksProcessor(object):
                                     ).first()
 
                                     if prev_output:
-                                        prev_out_address = prev_output.script_public_key_address
-                                        prev_amount = prev_output.amount
-
-                                        # Decrease balance for the input address
-                                        await self._update_balance(prev_out_address, -prev_amount)
+                                        await self._update_balance_from_rpc(prev_output.script_public_key_address)
 
                             self.txs_input.append(TransactionInput(transaction_id=tx_id,
                                                                     index=index,
