@@ -39,7 +39,6 @@ class BalanceProcessor(object):
     async def update_all_balances(self):
         with session_maker() as session:
             try:
-                # Get all distinct addresses from transactions_outputs table
                 query = session.execute(
                     """
                     SELECT DISTINCT script_public_key_address 
@@ -56,15 +55,15 @@ class BalanceProcessor(object):
                     return
 
                 _logger.info(f"Found {len(addresses)} addresses to update balances.")
-                await asyncio.sleep(60)
 
-                # Use asyncio.gather to process multiple addresses concurrently
-                tasks = [self.update_balance_from_rpc(address) for address in addresses]
-                await asyncio.gather(*tasks)
+                for address in addresses:
+                    await self.update_balance_from_rpc(address)
+                    await asyncio.sleep(1)  
 
             except Exception as e:
                 _logger.error(f"Error updating balances: {e}")
                 return
+
 
     async def update_balance_from_rpc(self, address):
         with session_maker() as session:
