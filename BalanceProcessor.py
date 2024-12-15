@@ -59,7 +59,7 @@ class BalanceProcessor(object):
                 await asyncio.sleep(60)
 
                 # Use asyncio.gather to process multiple addresses concurrently
-                tasks = [self._update_balance_from_rpc(address) for address in addresses]
+                tasks = [self.update_balance_from_rpc(address) for address in addresses]
                 await asyncio.gather(*tasks)
 
             except Exception as e:
