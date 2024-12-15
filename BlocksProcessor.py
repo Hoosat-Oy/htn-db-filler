@@ -110,6 +110,31 @@ class BlocksProcessor(object):
                     _logger.debug('')
                     await asyncio.sleep(2)
 
+    async def _get_balance_from_rpc(self, address):
+        """
+        Fetch balance for the given address from the RPC node.
+        """
+        try:
+            response = await self.client.request("getBalanceByAddress", {"address": address})
+
+            get_balance_response = response.get("getBalanceByAddressResponse", {})
+            balance = get_balance_response.get("balance", None)
+            error = get_balance_response.get("error", None)
+
+            if error:
+                _logger.error(f"Error fetching balance for address {address}: {error}")
+                return None
+            
+            if balance is not None:
+                return float(balance) 
+            
+            _logger.error(f"Balance not found for address {address}: {response}")
+            return None
+        
+        except Exception as e:
+            _logger.error(f"Error fetching balance for address {address}: {e}")
+            return None
+
     async def _update_balance(self, address, amount):
         """
         Updates the balance for a given address.
@@ -120,9 +145,13 @@ class BlocksProcessor(object):
             if balance:
                 balance.balance += amount
             else:
-                # If the address does not exist, create a new entry
-                balance = Balance(script_public_key_address=address, balance=amount)
-                session.add(balance)
+                address_balance = await self._get_balance_from_rpc(address)
+                if address_balance: 
+                    balance = Balance(script_public_key_address=address, balance=address_balance + amount)
+                    session.add(balance)
+                else:
+                    balance = Balance(script_public_key_address=address, balance=amount)
+                    session.add(balance)
 
             try:
                 session.commit()
