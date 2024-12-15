@@ -13,7 +13,7 @@ BATCH_PROCESSING=true
 ```
 START_HASH=HASHVALUE
 ```
-**Remark** HTN database filler is the first Kaspaverse database filler that can recreate the database from any block of the chain. 
+**Remark** HTN database filler is one of the first database fillers that can crawl the blockchain from genesis to the database.
 
 3. Enable balance processing:
 ```
