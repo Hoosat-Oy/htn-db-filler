@@ -24,3 +24,9 @@ BALANCE_ENABLED=true
 ```
 UPDATE_BALANCE_ON_BOOT=true
 ```
+
+**Modifications**
+1. Fix big transaction processing.
+2. Add batch processing of transactions.
+3. Add starting point for processing. 
+4. Add balance processing. 
