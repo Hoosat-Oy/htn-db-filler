@@ -114,7 +114,9 @@ class BlocksProcessor(object):
         """
         Adds block's transactions to queue. This is only prepartion without commit!
         """
+        
         if block.get("transactions") is not None:
+            unique_addresses = set()
             for transaction in block["transactions"]:
                 if transaction.get("verboseData") is not None:
                     tx_id = transaction["verboseData"]["transactionId"]
@@ -129,7 +131,6 @@ class BlocksProcessor(object):
                                                     block_hash=[transaction["verboseData"]["blockHash"]],
                                                     block_time=int(transaction["verboseData"]["blockTime"]))
                         # Track unique addresses to prevent duplicates
-                        unique_addresses = set()
                         # Process the outputs (increase balance)
                         for index, out in enumerate(transaction.get("outputs", [])):
                             address = out["verboseData"]["scriptPublicKeyAddress"]
@@ -170,14 +171,12 @@ class BlocksProcessor(object):
                                                                     previous_outpoint_index=prev_out_index,
                                                                     signature_script=tx_in["signatureScript"],
                                                                     sig_op_count=tx_in.get("sigOpCount", 0)))
-                        
-                            if self.env_enable_balance != False:
-                                for address in unique_addresses:
-                                    await self.balance.update_balance_from_rpc(address)
                     else:
                         # If the block if already in the Queue, merge the block_hashes.
                         self.txs[tx_id].block_hash = list(set(self.txs[tx_id].block_hash + [block_hash]))
-
+            if self.env_enable_balance != False:
+                for address in unique_addresses:
+                    await self.balance.update_balance_from_rpc(address)
 
     async def batch_commit_txs(self):
         """
