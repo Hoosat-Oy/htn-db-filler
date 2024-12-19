@@ -28,6 +28,7 @@ class BlocksProcessor(object):
         self.client = client
         self.blocks_to_add = []
         self.balance = balance
+        self.addresses_to_update = []
 
         self.txs = {}
         self.txs_output = []
@@ -52,11 +53,19 @@ class BlocksProcessor(object):
             # if cluster size is reached, insert to database
             if len(self.blocks_to_add) >= CLUSTER_SIZE:
                 await self.commit_blocks()
+                if self.env_enable_balance != False:
+                    await self.commit_balances()
                 if self.batch_processing == False:
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
                 asyncio.create_task(self.handle_blocks_committed(block_hashes))
+
+    async def commit_balances(self):
+        unique_addresses = list(set(self.addresses_to_update))
+        for address in unique_addresses:
+            await self.balance.update_balance_from_rpc(address)
+        self.addresses_to_update = []
 
     async def handle_blocks_committed(self, block_hashes):
         """
@@ -116,7 +125,6 @@ class BlocksProcessor(object):
         """
         
         if block.get("transactions") is not None:
-            addresses = []
             for transaction in block["transactions"]:
                 if transaction.get("verboseData") is not None:
                     tx_id = transaction["verboseData"]["transactionId"]
@@ -135,8 +143,7 @@ class BlocksProcessor(object):
                         for index, out in enumerate(transaction.get("outputs", [])):
                             address = out["verboseData"]["scriptPublicKeyAddress"]
                             amount = out["amount"]
-                            if not address in addresses:
-                                addresses.append(address)
+                            self.addresses_to_update.append(address)
 
                             self.txs_output.append(TransactionOutput(transaction_id=tx_id,
                                                                     index=index,
@@ -160,8 +167,7 @@ class BlocksProcessor(object):
 
                                     if prev_output:
                                         address = prev_output.script_public_key_address
-                                        if not address in addresses:
-                                            addresses.append(address)
+                                        self.addresses_to_update.append(address)
 
                             self.txs_input.append(TransactionInput(transaction_id=tx_id,
                                                                     index=index,
@@ -172,10 +178,6 @@ class BlocksProcessor(object):
                     else:
                         # If the block if already in the Queue, merge the block_hashes.
                         self.txs[tx_id].block_hash = list(set(self.txs[tx_id].block_hash + [block_hash]))
-            if self.env_enable_balance != False:
-                unique_addresses = list(set(addresses))
-                for address in unique_addresses:
-                    await self.balance.update_balance_from_rpc(address)
 
     async def batch_commit_txs(self):
         """
