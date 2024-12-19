@@ -116,7 +116,7 @@ class BlocksProcessor(object):
         """
         
         if block.get("transactions") is not None:
-            unique_addresses = set()
+            addresses = []
             for transaction in block["transactions"]:
                 if transaction.get("verboseData") is not None:
                     tx_id = transaction["verboseData"]["transactionId"]
@@ -135,9 +135,8 @@ class BlocksProcessor(object):
                         for index, out in enumerate(transaction.get("outputs", [])):
                             address = out["verboseData"]["scriptPublicKeyAddress"]
                             amount = out["amount"]
-                            if address in unique_addresses:
-                                continue
-                            unique_addresses.add(address)
+                            if not address in addresses:
+                                addresses.append(address)
 
                             self.txs_output.append(TransactionOutput(transaction_id=tx_id,
                                                                     index=index,
@@ -161,9 +160,8 @@ class BlocksProcessor(object):
 
                                     if prev_output:
                                         address = prev_output.script_public_key_address
-                                        if address in unique_addresses:
-                                            continue
-                                        unique_addresses.add(address)
+                                        if not address in addresses:
+                                            addresses.append(address)
 
                             self.txs_input.append(TransactionInput(transaction_id=tx_id,
                                                                     index=index,
@@ -175,6 +173,7 @@ class BlocksProcessor(object):
                         # If the block if already in the Queue, merge the block_hashes.
                         self.txs[tx_id].block_hash = list(set(self.txs[tx_id].block_hash + [block_hash]))
             if self.env_enable_balance != False:
+                unique_addresses = list(set(addresses))
                 for address in unique_addresses:
                     await self.balance.update_balance_from_rpc(address)
 
