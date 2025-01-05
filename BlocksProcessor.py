@@ -72,13 +72,12 @@ class BlocksProcessor(object):
         """
         this function is executed, when a new cluster of blocks were added to the database
         """
-        task_runners = []
+        global task_runner
         for blockHash in enumerate(block_hashes):
             _logger.info(f'Starting VCP for {blockHash}')
+            while task_runner and not task_runner.done():
+                await task_runner
             task_runner = asyncio.create_task(self.vcp.yield_to_database(blockHash))
-            task_runners.append(task_runner)
-            await asyncio.sleep(0.5)
-        await asyncio.gather(*task_runner)
         block_hashes = []
 
     async def blockiter(self, start_point):
