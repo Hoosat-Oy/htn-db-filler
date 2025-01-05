@@ -44,9 +44,11 @@ class BlocksProcessor(object):
     async def loop(self, start_point):
         # go through each block added to DAG
         _logger.info('Start processing blocks from %s', start_point)
-        blocks = []
+        first_block = None
         async for block_hash, block in self.blockiter(start_point):
-            blocks.append(block)
+            is_chain_block = block["verboseData"].get("isChainBlock", False)
+            if first_block is None and is_chain_block is True:
+                first_block = block
             # prepare add block and tx to database
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
@@ -59,7 +61,8 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                asyncio.create_task(self.handle_blocks_committed(blocks))
+                asyncio.create_task(self.handle_blocks_committed(first_block))
+                first_block = None
 
     async def commit_balances(self):
         unique_addresses = list(set(self.addresses_to_update))
@@ -68,19 +71,16 @@ class BlocksProcessor(object):
             await asyncio.sleep(0.1)  
         self.addresses_to_update = []
 
-    async def handle_blocks_committed(self, blocks):
+    async def handle_blocks_committed(self, block):
         """
         this function is executed, when a new cluster of blocks were added to the database
         """
         global task_runner
-        for block in blocks:
-            is_chain_block = block["verboseData"].get("isChainBlock", False)
-            if is_chain_block is True: 
-                _logger.info(f'Starting VCP for {block["verboseData"]["hash"]} {is_chain_block}')
-                while task_runner and not task_runner.done():
-                    await task_runner
-                task_runner = asyncio.create_task(self.vcp.yield_to_database(block["verboseData"]["hash"]))
-        blocks = []
+        is_chain_block = block["verboseData"].get("isChainBlock", False)
+        _logger.info(f'Starting VCP for {block["verboseData"]["hash"]} {is_chain_block}')
+        while task_runner and not task_runner.done():
+            await task_runner
+        task_runner = asyncio.create_task(self.vcp.yield_to_database(block["verboseData"]["hash"]))
 
     async def blockiter(self, start_point):
         """
