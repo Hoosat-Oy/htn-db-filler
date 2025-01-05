@@ -73,7 +73,7 @@ class BlocksProcessor(object):
         this function is executed, when a new cluster of blocks were added to the database
         """
         global task_runner
-        for blockHash in enumerate(block_hashes):
+        for blockHash in block_hashes:
             _logger.info(f'Starting VCP for {blockHash}')
             while task_runner and not task_runner.done():
                 await task_runner
