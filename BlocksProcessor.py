@@ -44,6 +44,7 @@ class BlocksProcessor(object):
     async def loop(self, start_point):
         # go through each block added to DAG
         _logger.info('Start processing blocks from %s', start_point)
+        global commit_task 
         block_hashes = []
         async for block_hash, block in self.blockiter(start_point):
             block_hashes.append(block_hash)
@@ -59,7 +60,9 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                asyncio.create_task(self.handle_blocks_committed(block_hashes))
+                if commit_task and not commit_task.done():
+                    await commit_task
+                commit_task = asyncio.create_task(self.handle_blocks_committed(block_hashes))
 
     async def commit_balances(self):
         unique_addresses = list(set(self.addresses_to_update))
@@ -72,12 +75,12 @@ class BlocksProcessor(object):
         """
         this function is executed, when a new cluster of blocks were added to the database
         """
-        global task_runner
-        for index, blockHash in enumerate(block_hashes):
-            while task_runner and not task_runner.done(): 
-                await asyncio.sleep(0.5)
+        task_runners = []
+        for blockHash in enumerate(block_hashes):
             _logger.info(f'Starting VCP for {blockHash}')
             task_runner = asyncio.create_task(self.vcp.yield_to_database(blockHash))
+            task_runners.append(task_runner)
+        await asyncio.gather(*task_runner)
         block_hashes = []
 
     async def blockiter(self, start_point):
