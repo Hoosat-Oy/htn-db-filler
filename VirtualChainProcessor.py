@@ -100,6 +100,7 @@ class VirtualChainProcessor(object):
         """
         Add known blocks to database
         """
+        _logger.info(f'VCP requested with start hash {start_point}')
         resp = await self.client.request("getVirtualSelectedParentChainFromBlockRequest",
                                          {"startHash": start_point,
                                           "includeAcceptedTransactionIds": True},

@@ -76,10 +76,9 @@ class BlocksProcessor(object):
         this function is executed, when a new cluster of blocks were added to the database
         """
         global task_runner
-        is_chain_block = block["verboseData"].get("isChainBlock", False)
-        _logger.info(f'Starting VCP for {block["verboseData"]["hash"]} {is_chain_block}')
         while task_runner and not task_runner.done():
-            await task_runner
+            return
+        _logger.info(f'Starting VCP from block {block["verboseData"]["hash"]}')
         task_runner = asyncio.create_task(self.vcp.yield_to_database(block["verboseData"]["hash"]))
 
     async def blockiter(self, start_point):
