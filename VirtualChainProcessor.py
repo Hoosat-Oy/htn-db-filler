@@ -1,5 +1,6 @@
 # encoding: utf-8
 import asyncio
+import os
 import logging
 
 from dbsession import session_maker
@@ -88,8 +89,9 @@ class VirtualChainProcessor(object):
             
             # Mark last known/processed as start point for the next query
             if last_known_chain_block:
-                KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
-                await self.yield_to_database(last_known_chain_block)
+                if os.getenv('DONT_CONTINUE_VSPC', False) is False: 
+                    KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
+                    await self.yield_to_database(last_known_chain_block)
             
             # Clear the current response
             self.virtual_chain_response = None
