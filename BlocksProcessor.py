@@ -44,7 +44,7 @@ class BlocksProcessor(object):
     async def loop(self, start_point):
         # go through each block added to DAG
         _logger.info('Start processing blocks from %s', start_point)
-        global commit_task 
+        global task_runner 
         block_hashes = []
         async for block_hash, block in self.blockiter(start_point):
             block_hashes.append(block_hash)
@@ -60,9 +60,9 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
-                if commit_task and not commit_task.done():
-                    await commit_task
-                commit_task = asyncio.create_task(self.handle_blocks_committed(block_hashes))
+                while task_runner and not task_runner.done(): 
+                    await task_runner
+                task_runner = asyncio.create_task(self.handle_blocks_committed(block_hashes))
 
     async def commit_balances(self):
         unique_addresses = list(set(self.addresses_to_update))
