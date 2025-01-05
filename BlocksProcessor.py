@@ -54,7 +54,7 @@ class BlocksProcessor(object):
             if len(self.blocks_to_add) >= CLUSTER_SIZE:
                 await self.commit_blocks()
                 if self.env_enable_balance != False:
-                    await self.commit_balances()
+                   await self.commit_balances()
                 if self.batch_processing == False:
                     await self.commit_txs()
                 else: 
@@ -65,6 +65,7 @@ class BlocksProcessor(object):
         unique_addresses = list(set(self.addresses_to_update))
         for address in unique_addresses:
             await self.balance.update_balance_from_rpc(address)
+            await asyncio.sleep(0.1)  
         self.addresses_to_update = []
 
     async def handle_blocks_committed(self, block_hashes):
@@ -73,11 +74,10 @@ class BlocksProcessor(object):
         """
         global task_runner
         for index, blockHash in enumerate(block_hashes):
-            if index % 5 == 0:  # Check if the index is divisible by 5 (i.e., every 5th block)
-                while task_runner and not task_runner.done():  # Wait for any previous task to finish
-                    await asyncio.sleep(0.5)
-                _logger.info(f'Starting VCP for {blockHash}')
-                task_runner = asyncio.create_task(self.vcp.yield_to_database(blockHash))
+            while task_runner and not task_runner.done(): 
+                await asyncio.sleep(0.5)
+            _logger.info(f'Starting VCP for {blockHash}')
+            task_runner = asyncio.create_task(self.vcp.yield_to_database(blockHash))
         block_hashes = []
 
     async def blockiter(self, start_point):
