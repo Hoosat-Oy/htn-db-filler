@@ -79,8 +79,8 @@ async def main():
     if env_update_balance_on_boot is not False: 
         await bap.update_all_balances()
     # create instances of blocksprocessor and virtualchainprocessor
-    vcp = VirtualChainProcessor(client)
-    bp = BlocksProcessor(client, vcp, bap, batch_processing, env_start_hash, env_enable_balance)
+    vcp = VirtualChainProcessor(client, start_hash)
+    bp = BlocksProcessor(client, vcp, bap, batch_processing, env_enable_balance)
 
     # start blocks processor working concurrent
     while True:

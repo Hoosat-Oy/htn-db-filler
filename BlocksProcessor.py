@@ -24,7 +24,7 @@ class BlocksProcessor(object):
     BlocksProcessor polls hoosat for blocks and adds the meta information and it's transactions into database.
     """
 
-    def __init__(self, client, vcp_instance, balance, batch_processing = False, env_start_hash = None, env_enable_balance = False):
+    def __init__(self, client, vcp_instance, balance, batch_processing = False, env_enable_balance = False):
         self.client = client
         self.blocks_to_add = []
         self.balance = balance
@@ -34,7 +34,6 @@ class BlocksProcessor(object):
         self.txs_output = []
         self.txs_input = []
         self.vcp = vcp_instance
-        self.env_start_hash = env_start_hash
         self.env_enable_balance = env_enable_balance
         self.batch_processing = batch_processing
 
@@ -73,8 +72,8 @@ class BlocksProcessor(object):
         global task_runner
         while task_runner and not task_runner.done():
             return
-        _logger.info(f'Starting VCP from block {block_hash}')
-        task_runner = asyncio.create_task(self.vcp.yield_to_database(block_hash))
+        _logger.info(f'Starting VCP, current block hash {block_hash}')
+        task_runner = asyncio.create_task(self.vcp.yield_to_database())
 
     async def blockiter(self, start_point):
         """

@@ -20,8 +20,9 @@ class VirtualChainProcessor(object):
     basically a temporary storage. This buffer should be processed AFTER the blocks and transactions are added.
     """
 
-    def __init__(self, client):
+    def __init__(self, client, start_hash):
         self.virtual_chain_response = None
+        self.start_hash = start_hash
         self.client = client
 
     async def __update_transactions_in_db(self):
@@ -89,20 +90,19 @@ class VirtualChainProcessor(object):
             
             # Mark last known/processed as start point for the next query
             if last_known_chain_block:
-                if os.getenv('DONT_CONTINUE_VSPC', False) is False: 
-                    KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
-                    await self.yield_to_database(last_known_chain_block)
+                KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
+                self.start_hash = last_known_chain_block
             
             # Clear the current response
             self.virtual_chain_response = None
 
-    async def yield_to_database(self, start_point):
+    async def yield_to_database(self):
         """
         Add known blocks to database
         """
-        _logger.info(f'VCP requested with start hash {start_point}')
+        _logger.info(f'VCP requested with start hash {self.start_hash}')
         resp = await self.client.request("getVirtualSelectedParentChainFromBlockRequest",
-                                         {"startHash": start_point,
+                                         {"startHash": self.start_hash,
                                           "includeAcceptedTransactionIds": True},
                                          timeout=240)
         # if there is a response, add to queue and set new startpoint
