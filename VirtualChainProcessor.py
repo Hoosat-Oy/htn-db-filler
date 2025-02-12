@@ -60,7 +60,7 @@ class VirtualChainProcessor(object):
                 last_known_chain_block = accepting_block_hash
                 accepted_ids.append((tx_accept_dict['acceptingBlockHash'], tx_accept_dict["acceptedTransactionIds"]))
 
-                if len(accepted_ids) >= 10000:
+                if len(accepted_ids) >= 2500:
                     break
 
             # add rejected blocks if needed
