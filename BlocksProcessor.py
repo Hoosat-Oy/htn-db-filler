@@ -63,7 +63,7 @@ class BlocksProcessor(object):
         unique_addresses = list(set(addresses))
         for address in unique_addresses:    
             await self.balance.update_balance_from_rpc(address)
-            await asyncio.sleep(0.01)  
+            await asyncio.sleep(0.1)  
 
     async def handle_blocks_committed(self):
         """
