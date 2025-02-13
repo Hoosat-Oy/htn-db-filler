@@ -56,14 +56,14 @@ class BlocksProcessor(object):
                     await self.batch_commit_txs()
                 asyncio.create_task(self.handle_blocks_committed())
                 if self.env_enable_balance != False:
-                   await self.commit_balances()
+                    self.addresses_to_update = []
+                    asyncio.create_task(self.commit_balances(self.addresses_to_update))
 
-    async def commit_balances(self):
-        unique_addresses = list(set(self.addresses_to_update))
+    async def commit_balances(self, addresses):
+        unique_addresses = list(set(addresses))
         for address in unique_addresses:    
             await self.balance.update_balance_from_rpc(address)
-            await asyncio.sleep(0.1)  
-        self.addresses_to_update = []
+            await asyncio.sleep(0.01)  
 
     async def handle_blocks_committed(self):
         """
@@ -132,13 +132,11 @@ class BlocksProcessor(object):
                                                     mass=transaction["verboseData"].get("mass"),
                                                     block_hash=[transaction["verboseData"]["blockHash"]],
                                                     block_time=int(transaction["verboseData"]["blockTime"]))
-                        # Track unique addresses to prevent duplicates
-                        # Process the outputs (increase balance)
                         for index, out in enumerate(transaction.get("outputs", [])):
                             address = out["verboseData"]["scriptPublicKeyAddress"]
                             amount = out["amount"]
-                            self.addresses_to_update.append(address)
-
+                            if address not in self.addresses_to_update:
+                                self.addresses_to_update.append(address)
                             self.txs_output.append(TransactionOutput(transaction_id=tx_id,
                                                                     index=index,
                                                                     amount=amount,
@@ -146,27 +144,11 @@ class BlocksProcessor(object):
                                                                     script_public_key_address=address,
                                                                     script_public_key_type=out["verboseData"]["scriptPublicKeyType"]))
 
-                        # Process the inputs (decrease balance)
                         for index, tx_in in enumerate(transaction.get("inputs", [])):
-                            if self.env_enable_balance != False: 
-                                prev_out_tx_id = tx_in["previousOutpoint"]["transactionId"]
-                                prev_out_index = int(tx_in["previousOutpoint"].get("index", 0))
-
-                                # Query the previous transaction output (this is where the input came from)
-                                with session_maker() as session:
-                                    prev_output = session.query(TransactionOutput).filter_by(
-                                        transaction_id=prev_out_tx_id,
-                                        index=prev_out_index
-                                    ).first()
-
-                                    if prev_output:
-                                        address = prev_output.script_public_key_address
-                                        self.addresses_to_update.append(address)
-
                             self.txs_input.append(TransactionInput(transaction_id=tx_id,
                                                                     index=index,
-                                                                    previous_outpoint_hash=prev_out_tx_id,
-                                                                    previous_outpoint_index=prev_out_index,
+                                                                    previous_outpoint_hash=tx_in["previousOutpoint"]["transactionId"],
+                                                                    previous_outpoint_index=int(tx_in["previousOutpoint"].get("index", 0)),
                                                                     signature_script=tx_in["signatureScript"],
                                                                     sig_op_count=tx_in.get("sigOpCount", 0)))
                     else:
