@@ -50,12 +50,12 @@ class BlocksProcessor(object):
             # if cluster size is reached, insert to database
             if len(self.blocks_to_add) >= CLUSTER_SIZE:
                 await self.commit_blocks()
-                if self.env_enable_balance != False:
-                   await self.commit_balances()
                 if self.batch_processing == False:
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
+                if self.env_enable_balance != False:
+                   await self.commit_balances()
                 asyncio.create_task(self.handle_blocks_committed())
 
     async def commit_balances(self):
