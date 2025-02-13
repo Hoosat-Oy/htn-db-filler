@@ -54,9 +54,9 @@ class BlocksProcessor(object):
                     await self.commit_txs()
                 else: 
                     await self.batch_commit_txs()
+                asyncio.create_task(self.handle_blocks_committed())
                 if self.env_enable_balance != False:
                    await self.commit_balances()
-                asyncio.create_task(self.handle_blocks_committed())
 
     async def commit_balances(self):
         unique_addresses = list(set(self.addresses_to_update))
