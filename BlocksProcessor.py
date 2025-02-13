@@ -13,8 +13,8 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE = 60
-CLUSTER_WAIT_SECONDS = 60
+CLUSTER_SIZE = 5
+CLUSTER_WAIT_SECONDS = 5
 B_TREE_SIZE = 2500
 
 task_runner = None

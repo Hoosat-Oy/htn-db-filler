@@ -84,9 +84,6 @@ class VirtualChainProcessor(object):
 
                 _logger.info(f'Set is_accepted=True for {count_tx} transactions.')
                 s.commit()
-
-            # Clear the current response
-            self.virtual_chain_response = None
             
             # Mark last known/processed as start point for the next query
             if last_known_chain_block:
