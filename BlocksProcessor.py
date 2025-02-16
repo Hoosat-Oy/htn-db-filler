@@ -96,7 +96,7 @@ class BlocksProcessor(object):
             for i, blockHash in enumerate(block_hashes):
                 # _logger.debug(int(daginfo["getBlockDagInfoResponse"]["virtualDaaScore"]))
                 # _logger.debug(int(blocks[i]['header']['daaScore']))
-                # if int(daginfo["getBlockDagInfoResponse"]["virtualDaaScore"]) <= int(blocks[i]['header']['daaScore']):
+                # if int"(daginfo["getBlockDagInfoResponse"][virtualDaaScore"]) <= int(blocks[i]['header']['daaScore']):
                 #     self.synced = True
                 #     break
                 if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
@@ -108,15 +108,15 @@ class BlocksProcessor(object):
                     continue
                 # yield blockhash and it's data
                 yield blockHash, blocks[i]
-
+            if self.synced: 
+                low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
+                _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
+                await asyncio.sleep(CLUSTER_WAIT_SECONDS)
             if len(block_hashes) > 1:
                 low_hash = block_hashes[len(block_hashes) - 1]
             else:
                 await asyncio.sleep(2)
-
-            if self.synced:
-                _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
-                await asyncio.sleep(CLUSTER_WAIT_SECONDS)
+                
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
