@@ -93,19 +93,11 @@ class BlocksProcessor(object):
             # go through each block and yield
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             blocks = resp["getBlocksResponse"]["blocks"]
-            previousDaaScore = None
             for i, blockHash in enumerate(block_hashes):
-                currentDaaScore = blocks[i]["header"]["daaScore"]
                 if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
                     _logger.debug('Found tip hash. Generator is synced now.')
                     self.synced = True
                     break # Dont iterate over the tipHash, because getBlock request returns old blocks. 
-                # Ignore blocks with older daa score than the previous daa score.
-                if previousDaaScore == None or previousDaaScore < currentDaaScore:
-                    previousDaaScore = currentDaaScore
-                elif previousDaaScore > currentDaaScore:
-                    self.synced = True
-                    break
                 # ignore the first block, which is not start point. It is already processed by previous request
                 if blockHash == low_hash and blockHash != start_point:
                     continue
