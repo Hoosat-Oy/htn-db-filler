@@ -137,8 +137,9 @@ class BlocksProcessor(object):
                         for index, out in enumerate(transaction.get("outputs", [])):
                             address = out["verboseData"]["scriptPublicKeyAddress"]
                             amount = out["amount"]
-                            if address not in self.addresses_to_update:
-                                self.addresses_to_update.append(address)
+                            if self.env_enable_balance != False: 
+                                if address not in self.addresses_to_update:
+                                    self.addresses_to_update.append(address)
                             self.txs_output.append(TransactionOutput(transaction_id=tx_id,
                                                                     index=index,
                                                                     amount=amount,
@@ -147,6 +148,18 @@ class BlocksProcessor(object):
                                                                     script_public_key_type=out["verboseData"]["scriptPublicKeyType"]))
 
                         for index, tx_in in enumerate(transaction.get("inputs", [])):
+                            if self.env_enable_balance != False: 
+                                prev_out_tx_id = tx_in["previousOutpoint"]["transactionId"]
+                                prev_out_index = int(tx_in["previousOutpoint"].get("index", 0))
+                                with session_maker() as session:
+                                    prev_output = session.query(TransactionOutput).filter_by(
+                                        transaction_id=prev_out_tx_id,
+                                        index=prev_out_index
+                                    ).first()
+                                    if prev_output:
+                                        address = prev_output.script_public_key_address
+                                        if address not in self.addresses_to_update:
+                                            self.addresses_to_update.append(address)
                             self.txs_input.append(TransactionInput(transaction_id=tx_id,
                                                                     index=index,
                                                                     previous_outpoint_hash=tx_in["previousOutpoint"]["transactionId"],
