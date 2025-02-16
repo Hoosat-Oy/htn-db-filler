@@ -108,14 +108,15 @@ class BlocksProcessor(object):
                     continue
                 # yield blockhash and it's data
                 yield blockHash, blocks[i]
-            if self.synced: 
+            if self.synced == False:
+                if len(block_hashes) > 1:
+                    low_hash = block_hashes[len(block_hashes) - 1]
+                else:
+                    await asyncio.sleep(2)
+            elif self.synced: 
                 low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
                 _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
-            if len(block_hashes) > 1:
-                low_hash = block_hashes[len(block_hashes) - 1]
-            else:
-                await asyncio.sleep(2)
                 
 
     async def __add_tx_to_queue(self, block_hash, block):
