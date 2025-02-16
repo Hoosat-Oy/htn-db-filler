@@ -14,7 +14,7 @@ from utils.Event import Event
 _logger = logging.getLogger(__name__)
 
 CLUSTER_SIZE = 15
-CLUSTER_WAIT_SECONDS = 30
+CLUSTER_WAIT_SECONDS = 60
 B_TREE_SIZE = 2500
 
 task_runner = None
@@ -49,7 +49,6 @@ class BlocksProcessor(object):
             await self.__add_tx_to_queue(block_hash, block)
             # if cluster size is reached, insert to database
             if len(self.blocks_to_add) >= CLUSTER_SIZE:
-                _logger.info('Last Cluster block %s, before committing blocks.', block_hash)
                 await self.commit_blocks()
                 if self.batch_processing == False:
                     await self.commit_txs()
@@ -111,10 +110,12 @@ class BlocksProcessor(object):
             if self.synced == False:
                 if len(block_hashes) > 1:
                     low_hash = block_hashes[len(block_hashes) - 1]
+                    _logger.debug('New low hash block %s.', low_hash)
                 else:
                     await asyncio.sleep(2)
             elif self.synced: 
                 low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
+                _logger.debug('New low hash block %s.', low_hash)
                 _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
                 
