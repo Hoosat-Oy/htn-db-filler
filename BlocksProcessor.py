@@ -94,6 +94,8 @@ class BlocksProcessor(object):
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             blocks = resp["getBlocksResponse"]["blocks"]
             for i, blockHash in enumerate(block_hashes):
+                _logger.debug(int(daginfo["getBlockDagInfoResponse"]["virtualDaaScore"]))
+                _logger.debug(int(blocks[i]['header']['daaScore']))
                 if int(daginfo["getBlockDagInfoResponse"]["virtualDaaScore"]) <= int(blocks[i]['header']['daaScore']):
                     self.synced = True
                     break
