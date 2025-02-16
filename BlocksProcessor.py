@@ -14,7 +14,7 @@ from utils.Event import Event
 _logger = logging.getLogger(__name__)
 
 CLUSTER_SIZE = 15
-CLUSTER_WAIT_SECONDS = 60
+CLUSTER_WAIT_SECONDS = 30
 B_TREE_SIZE = 2500
 
 task_runner = None
@@ -93,18 +93,10 @@ class BlocksProcessor(object):
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             blocks = resp["getBlocksResponse"]["blocks"]
             for i, blockHash in enumerate(block_hashes):
-                # _logger.debug(int(daginfo["getBlockDagInfoResponse"]["virtualDaaScore"]))
-                # _logger.debug(int(blocks[i]['header']['daaScore']))
-                # if int"(daginfo["getBlockDagInfoResponse"][virtualDaaScore"]) <= int(blocks[i]['header']['daaScore']):
-                #     self.synced = True
-                #     break
                 if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
                     _logger.debug('Found tip hash. Generator is synced now.')
                     self.synced = True
                     break # Dont iterate over the tipHash, because getBlock request returns old blocks. 
-                # ignore the first block, which is not start point. It is already processed by previous request
-                if blockHash == low_hash and blockHash != start_point:
-                    continue
                 # yield blockhash and it's data
                 yield blockHash, blocks[i]
             if self.synced == False:
