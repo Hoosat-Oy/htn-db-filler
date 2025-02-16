@@ -92,10 +92,10 @@ class BlocksProcessor(object):
                                              timeout=60)
             # go through each block and yield
             for i, blockHash in enumerate(resp["getBlocksResponse"].get("blockHashes", [])):
-                if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
-                    _logger.info(f'Found tip hash {daginfo["getBlockDagInfoResponse"]["tipHashes"][0]}')
-                    self.tipFound = True
-                    break
+                if not self.tipFound:
+                    if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
+                        _logger.info('Found tip hash. Generator is synced now.')
+                        self.tipFound = True
                 # ignore the first block, which is not start point. It is already processed by previous request
                 if blockHash == low_hash and blockHash != start_point:
                     continue
