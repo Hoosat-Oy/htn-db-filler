@@ -92,7 +92,7 @@ class BlocksProcessor(object):
                                              timeout=60)
             # go through each block and yield
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
-            blocks = resp["getBlocksResponse"]["blocks"][i]
+            blocks = resp["getBlocksResponse"]["blocks"]
             for i, blockHash in enumerate(block_hashes):
                 if not self.tipFound:
                     if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
@@ -103,7 +103,7 @@ class BlocksProcessor(object):
                 if blockHash == low_hash and blockHash != start_point:
                     continue
                 # yield blockhash and it's data
-                yield blockHash, blocks
+                yield blockHash, blocks[i]
 
             if len(block_hashes) > 1:
                 low_hash =  block_hashes[len(block_hashes) - 1]
