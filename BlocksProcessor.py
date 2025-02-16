@@ -14,7 +14,7 @@ from utils.Event import Event
 _logger = logging.getLogger(__name__)
 
 CLUSTER_SIZE = 5
-CLUSTER_WAIT_SECONDS = 4
+CLUSTER_WAIT_SECONDS = 30
 B_TREE_SIZE = 2500
 
 task_runner = None
@@ -91,24 +91,28 @@ class BlocksProcessor(object):
                                              },
                                              timeout=60)
             # go through each block and yield
-            for i, blockHash in enumerate(resp["getBlocksResponse"].get("blockHashes", [])):
+            block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
+            blocks = resp["getBlocksResponse"]["blocks"][i]
+            for i, blockHash in enumerate(block_hashes):
                 if not self.tipFound:
                     if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
-                        _logger.info('Found tip hash. Generator is synced now.')
+                        _logger.debug('Found tip hash. Generator is synced now.')
                         self.tipFound = True
+                        break # Dont iterate over the tipHash, beause getBlock request returns old blocks. 
                 # ignore the first block, which is not start point. It is already processed by previous request
                 if blockHash == low_hash and blockHash != start_point:
                     continue
                 # yield blockhash and it's data
-                yield blockHash, resp["getBlocksResponse"]["blocks"][i]
+                yield blockHash, blocks
 
-            if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
-                low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
+            if len(block_hashes) > 1:
+                low_hash =  block_hashes[len(block_hashes) - 1]
             else:
                 await asyncio.sleep(2)
 
             if self.tipFound:
                 _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
+                self.tipFound = False # reset finding the tip hash.
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
 
     async def __add_tx_to_queue(self, block_hash, block):
