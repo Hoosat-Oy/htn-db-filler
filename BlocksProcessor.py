@@ -14,7 +14,7 @@ from utils.Event import Event
 _logger = logging.getLogger(__name__)
 
 CLUSTER_SIZE = 5
-CLUSTER_WAIT_SECONDS = 5
+CLUSTER_WAIT_SECONDS = 4
 B_TREE_SIZE = 2500
 
 task_runner = None
@@ -102,18 +102,14 @@ class BlocksProcessor(object):
                 # yield blockhash and it's data
                 yield blockHash, resp["getBlocksResponse"]["blocks"][i]
 
-            # if synced, poll blocks after 1s
+            if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
+                low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
+            else:
+                await asyncio.sleep(2)
+
             if self.tipFound:
-                low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
                 _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
-                self.tipFound = False
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
-            else: 
-                if len(resp["getBlocksResponse"].get("blockHashes", [])) > 1:
-                    low_hash = resp["getBlocksResponse"]["blockHashes"][-1]
-                else:
-                    _logger.debug('')
-                    await asyncio.sleep(2)
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
