@@ -13,8 +13,8 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE = 10
-CLUSTER_WAIT_SECONDS = 30
+CLUSTER_SIZE = 15
+CLUSTER_WAIT_SECONDS = 60
 B_TREE_SIZE = 2500
 
 task_runner = None
@@ -94,11 +94,11 @@ class BlocksProcessor(object):
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             blocks = resp["getBlocksResponse"]["blocks"]
             for i, blockHash in enumerate(block_hashes):
-                _logger.debug(int(daginfo["getBlockDagInfoResponse"]["virtualDaaScore"]))
-                _logger.debug(int(blocks[i]['header']['daaScore']))
-                if int(daginfo["getBlockDagInfoResponse"]["virtualDaaScore"]) <= int(blocks[i]['header']['daaScore']):
-                    self.synced = True
-                    break
+                # _logger.debug(int(daginfo["getBlockDagInfoResponse"]["virtualDaaScore"]))
+                # _logger.debug(int(blocks[i]['header']['daaScore']))
+                # if int(daginfo["getBlockDagInfoResponse"]["virtualDaaScore"]) <= int(blocks[i]['header']['daaScore']):
+                #     self.synced = True
+                #     break
                 if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
                     _logger.debug('Found tip hash. Generator is synced now.')
                     self.synced = True
