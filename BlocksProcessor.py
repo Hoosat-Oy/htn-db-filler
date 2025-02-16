@@ -94,6 +94,9 @@ class BlocksProcessor(object):
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             blocks = resp["getBlocksResponse"]["blocks"]
             for i, blockHash in enumerate(block_hashes):
+                if int(daginfo["getBlockDagInfoResponse"]["virtualDaaScore"]) >= int(blocks[i]['header']['daaScore']):
+                    self.synced = True
+                    break
                 if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
                     _logger.debug('Found tip hash. Generator is synced now.')
                     self.synced = True
