@@ -70,7 +70,7 @@ class BalanceProcessor(object):
             try:
                 balance = session.query(Balance).filter(Balance.script_public_key_address == address).first()
                 address_balance = await self._get_balance_from_rpc(address) 
-                _logger.debug(f"Updating address {address} balance to {address_balance}")
+                #_logger.debug(f"Updating address {address} balance to {address_balance}")
 
                 if address_balance is None:
                     return
