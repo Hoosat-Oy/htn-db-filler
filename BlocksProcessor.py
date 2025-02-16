@@ -13,8 +13,8 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
-CLUSTER_SIZE = 15
-CLUSTER_WAIT_SECONDS = 15
+CLUSTER_SIZE = 5
+CLUSTER_WAIT_SECONDS = 4
 B_TREE_SIZE = 2500
 
 task_runner = None
@@ -108,7 +108,7 @@ class BlocksProcessor(object):
             elif self.synced: 
                 low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
                 _logger.debug('New low hash block %s.', low_hash)
-                _logger.debug(f'Waiting for the next blocks request, low hash {low_hash}')
+                _logger.debug(f'Waiting for the next blocks request.')
                 await asyncio.sleep(CLUSTER_WAIT_SECONDS)
                 
 
