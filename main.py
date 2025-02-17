@@ -51,15 +51,16 @@ async def main():
 
     # wait for client to be synced
     while client.htnds[0].is_synced == False:
-        _logger.info('Client not synced yet. Waiting...')
+        _logger.debug('Client not synced yet. Waiting...')
         time.sleep(60)
 
-    
     # find last acceptedTx's block hash, when restarting this tool
     start_hash = KeyValueStore.get("vspc_last_start_hash")
 
     # if there is nothing in the db, just get the first block after genesis.
     daginfo = await client.request("getBlockDagInfoRequest", {})
+    if daginfo is None:
+        _logger.debug("Failed first BlockDagInfoRequest")
     virtualParentHash = daginfo["getBlockDagInfoResponse"]["virtualParentHashes"][0]
     if not start_hash:
         start_hash = virtualParentHash
