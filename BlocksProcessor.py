@@ -90,7 +90,6 @@ class BlocksProcessor(object):
                                              },
                                              timeout=60)
             # go through each block and yield
-            _logger.debug(resp)
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             blocks = resp["getBlocksResponse"]["blocks"]
             for i, blockHash in enumerate(block_hashes):
