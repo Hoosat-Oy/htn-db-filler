@@ -59,9 +59,10 @@ async def main():
     start_hash = KeyValueStore.get("vspc_last_start_hash")
 
     # if there is nothing in the db, just get the first block after genesis.
+    daginfo = await client.request("getBlockDagInfoRequest", {})
+    virtualParentHash = daginfo["getBlockDagInfoResponse"]["virtualParentHashes"][0]
     if not start_hash:
-        daginfo = await client.request("getBlockDagInfoRequest", {})
-        start_hash = daginfo["getBlockDagInfoResponse"]["virtualParentHashes"][0]
+        start_hash = virtualParentHash
 
     # if there is argument start_hash start with that instead of last acceptedTx or latest block.
     env_start_hash = os.getenv('START_HASH', None) # Default to None if not set
