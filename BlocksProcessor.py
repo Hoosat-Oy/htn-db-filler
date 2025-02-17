@@ -169,16 +169,18 @@ class BlocksProcessor(object):
 
     async def batch_commit_txs(self):
         """
-        Add all queued transactions and its in- and outputs to the database in batches to avoid exceeding PostgreSQL limits.
+        Add all queued transactions and their in- and outputs to the database in batches
+        to avoid exceeding PostgreSQL limits.
         """
         BATCH_SIZE = 5  # Define a suitable batch size
 
         # First, handle updates for existing transactions.
         tx_ids_to_add = list(self.txs.keys())
 
-        # Calculate the number of batches needed
+        # Calculate the number of batches needed for updating existing transactions
         num_batches = len(tx_ids_to_add) // BATCH_SIZE + (1 if len(tx_ids_to_add) % BATCH_SIZE > 0 else 0)
 
+        # Handle updates for existing transactions in batches
         for i in range(num_batches):
             with session_maker() as session:
                 # Determine the subset of transaction IDs for this batch
@@ -201,7 +203,7 @@ class BlocksProcessor(object):
                     session.rollback()
                     _logger.error(f'Error updating transactions in batch {i+1}/{num_batches}: {e}')
 
-        # Pre-map outputs and inputs to their transaction IDs
+        # Pre-map outputs and inputs to their transaction IDs for new transactions
         outputs_by_tx = {tx_id: [] for tx_id in self.txs.keys()}
         for output in self.txs_output:
             if output.transaction_id in outputs_by_tx:
@@ -215,6 +217,7 @@ class BlocksProcessor(object):
         # Now, handle insertion of new transactions in batches.
         all_new_txs = list(self.txs.values())
 
+        # Insert new transactions and their inputs/outputs in batches
         for i in range(0, len(all_new_txs), BATCH_SIZE):
             with session_maker() as session:
                 batch_txs = all_new_txs[i:i + BATCH_SIZE]
@@ -223,6 +226,7 @@ class BlocksProcessor(object):
                 batch_outputs = [output for tx_id in batch_tx_ids for output in outputs_by_tx[tx_id]]
                 batch_inputs = [input for tx_id in batch_tx_ids for input in inputs_by_tx[tx_id]]
 
+                # Add all new transactions, outputs, and inputs to the session
                 session.add_all(batch_txs)
                 session.add_all(batch_outputs)
                 session.add_all(batch_inputs)
@@ -233,54 +237,55 @@ class BlocksProcessor(object):
                 except Exception as e:
                     session.rollback()
                     _logger.error(f'Error adding TXs to database in a batch {i+1}/{num_batches}: {e}')
-                    # Further error handling could be implemented here as needed.
 
         # Reset queues after all batches have been processed.
         self.txs = {}
         self.txs_input = []
         self.txs_output = []
 
+
     # Original commit_txs
     async def commit_txs(self):
         """
-        Add all queued transactions and it's in- and outputs to database
+        Add all queued transactions and their in- and outputs to the database
         """
-        # First go through all transactions and check, if there are already added ones.
-        # If yes, update block_hash and remove from queue
         tx_ids_to_add = list(self.txs.keys())
+        
+        # Use a single session and avoid duplicate transactions
         with session_maker() as session:
+            # Check if any transactions already exist in the database
             tx_items = session.query(Transaction).filter(Transaction.transaction_id.in_(tx_ids_to_add)).all()
+            
+            # Update existing transactions (if any) and remove them from the queue
             for tx_item in tx_items:
-                tx_item.block_hash = list((set(tx_item.block_hash) | set(self.txs[tx_item.transaction_id].block_hash)))
+                tx_item.block_hash = list(set(tx_item.block_hash) | set(self.txs[tx_item.transaction_id].block_hash))
                 self.txs.pop(tx_item.transaction_id)
-            session.commit()
 
-        # Go through all transactions which were not in the database and add now.
-        with session_maker() as session:
-            # go through queues and add
-            for _ in self.txs.values():
-                session.add(_)
+            # Now add new transactions and their inputs/outputs
+            for txv in self.txs.values():
+                session.merge(txv)  # This will insert new or update existing transaction
 
+            # Add related outputs and inputs
             for tx_output in self.txs_output:
                 if tx_output.transaction_id in self.txs:
-                    session.add(tx_output)
+                    session.merge(tx_output)
 
             for tx_input in self.txs_input:
                 if tx_input.transaction_id in self.txs:
-                    session.add(tx_input)
+                    session.merge(tx_input)
 
             try:
-                session.commit()
-
-                # reset queues
+                session.commit()  # Commit only once after all changes
+                # Reset queues
                 self.txs = {}
                 self.txs_input = []
                 self.txs_output = []
 
             except IntegrityError:
                 session.rollback()
-                _logger.error(f'Error adding TXs to database')
+                _logger.error('Error adding TXs to database')
                 raise
+
 
 
     async def __add_block_to_queue(self, block_hash, block):
@@ -329,8 +334,8 @@ class BlocksProcessor(object):
 
         # insert blocks
         with session_maker() as session:
-            for _ in self.blocks_to_add:
-                session.add(_)
+            for block in self.blocks_to_add:
+                session.merge(block)
             try:
                 session.commit()
                 # reset queue
