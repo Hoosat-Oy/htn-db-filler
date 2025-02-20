@@ -60,7 +60,7 @@ class VirtualChainProcessor(object):
                     continue  # Stop once we reached a non-existing block
 
                 last_known_chain_block = accepting_block_hash
-                if len(accepted_ids) >= 200:
+                if len(accepted_ids) >= 5000:
                     _logger.info(f'Length of accepted ids {len(accepted_ids)}')
                     break
 
