@@ -60,7 +60,7 @@ class VirtualChainProcessor(object):
                 accepted_ids.append((tx_accept_dict['acceptingBlockHash'], tx_accept_dict["acceptedTransactionIds"]))
 
                 last_known_chain_block = accepting_block_hash
-                if len(accepted_ids) >= 5000:
+                if len(accepted_ids) >= 1500:
                     _logger.info(f'Length of accepted ids {len(accepted_ids)}')
                     break
 
