@@ -265,16 +265,16 @@ class BlocksProcessor(object):
 
             # Now add new transactions and their inputs/outputs
             for txv in self.txs.values():
-                session.merge(txv)  # This will insert new or update existing transaction
+                session.add(txv)  # This will insert new or update existing transaction
 
             # Add related outputs and inputs
             for tx_output in self.txs_output:
                 if tx_output.transaction_id in self.txs:
-                    session.merge(tx_output)
+                    session.add(tx_output)
 
             for tx_input in self.txs_input:
                 if tx_input.transaction_id in self.txs:
-                    session.merge(tx_input)
+                    session.add(tx_input)
 
             try:
                 session.commit()  # Commit only once after all changes
@@ -337,7 +337,7 @@ class BlocksProcessor(object):
         # insert blocks
         with session_maker() as session:
             for block in self.blocks_to_add:
-                session.merge(block)
+                session.add(block)
             try:
                 session.commit()
                 # reset queue
