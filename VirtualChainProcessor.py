@@ -56,12 +56,11 @@ class VirtualChainProcessor(object):
                 accepted_ids.append((tx_accept_dict['acceptingBlockHash'], tx_accept_dict["acceptedTransactionIds"]))
 
                 if accepting_block_hash not in parent_chain_blocks_in_db:
-                    _logger.info(f'Accepting block has not in parent_chain_bocks.')
+                    _logger.info(f'Accepting block hash not in parent chain blocks.')
                     break  # Stop once we reached a non-existing block
 
                 last_known_chain_block = accepting_block_hash
-
-                if len(accepted_ids) >= 5000:
+                if len(accepted_ids) >= 200:
                     _logger.info(f'Length of accepted ids {len(accepted_ids)}')
                     break
 
@@ -76,7 +75,7 @@ class VirtualChainProcessor(object):
                     _logger.info(f'Set is_accepted=False for {count} TXs')
                     s.commit()
 
-                count_tx = 0
+                count_tx = 0    
 
                 # set is_accepted to True and add accepting_block_hash
                 for accepting_block_hash, accepted_tx_ids in accepted_ids:
