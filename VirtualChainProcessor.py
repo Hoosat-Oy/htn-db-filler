@@ -57,7 +57,7 @@ class VirtualChainProcessor(object):
 
                 if accepting_block_hash not in parent_chain_blocks_in_db:
                     _logger.info(f'Accepting block hash not in parent chain blocks.')
-                    break  # Stop once we reached a non-existing block
+                    continue  # Stop once we reached a non-existing block
 
                 last_known_chain_block = accepting_block_hash
                 if len(accepted_ids) >= 200:
