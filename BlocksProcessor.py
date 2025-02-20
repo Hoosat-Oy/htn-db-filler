@@ -91,7 +91,7 @@ class BlocksProcessor(object):
                                              timeout=60)
             # go through each block and yield
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
-            blocks = resp["getBlocksResponse"]["blocks"]
+            blocks = resp["getBlocksResponse"].get("blocks", [])
             for i, blockHash in enumerate(block_hashes):
                 if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
                     _logger.debug('Found tip hash. Generator is synced now.')
