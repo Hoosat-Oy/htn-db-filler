@@ -104,6 +104,7 @@ class BlocksProcessor(object):
                     low_hash = block_hashes[len(block_hashes) - 1]
                     _logger.debug('New low hash block %s.', low_hash)
                 else:
+                    _logger.debug('Using old low hash block %s.', low_hash)
                     await asyncio.sleep(2)
             elif self.synced: 
                 low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
