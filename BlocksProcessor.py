@@ -100,18 +100,18 @@ class BlocksProcessor(object):
                     break # Dont iterate over the tipHash, because getBlock request returns old blocks. 
                 # yield blockhash and it's data
                 yield blockHash, blocks[i]
-            if self.synced == False:
+            if self.synced: 
+                low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
+                _logger.debug('New low hash block %s.', low_hash)
+                _logger.debug(f'Waiting for the next blocks request.')
+                await asyncio.sleep(CLUSTER_WAIT_SECONDS)
+            else:
                 if len(block_hashes) > 1:
                     low_hash = block_hashes[len(block_hashes) - 1]
                     _logger.debug('New low hash block %s.', low_hash)
                 else:
                     _logger.debug('Using old low hash block %s.', low_hash)
                     await asyncio.sleep(2)
-            elif self.synced: 
-                low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
-                _logger.debug('New low hash block %s.', low_hash)
-                _logger.debug(f'Waiting for the next blocks request.')
-                await asyncio.sleep(CLUSTER_WAIT_SECONDS)
                 
 
     async def __add_tx_to_queue(self, block_hash, block):
