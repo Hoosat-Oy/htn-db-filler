@@ -53,13 +53,13 @@ class VirtualChainProcessor(object):
             # go through all acceptedTransactionIds and stop if a block hash is not in database
             for tx_accept_dict in parent_chain_response['acceptedTransactionIds']:
                 accepting_block_hash = tx_accept_dict['acceptingBlockHash']
+                accepted_ids.append((tx_accept_dict['acceptingBlockHash'], tx_accept_dict["acceptedTransactionIds"]))
 
                 if accepting_block_hash not in parent_chain_blocks_in_db:
                     _logger.info(f'Accepting block has not in parent_chain_bocks.')
                     break  # Stop once we reached a non-existing block
 
                 last_known_chain_block = accepting_block_hash
-                accepted_ids.append((tx_accept_dict['acceptingBlockHash'], tx_accept_dict["acceptedTransactionIds"]))
 
                 if len(accepted_ids) >= 5000:
                     _logger.info(f'Length of accepted ids {len(accepted_ids)}')
