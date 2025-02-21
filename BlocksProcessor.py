@@ -52,7 +52,7 @@ class BlocksProcessor(object):
             if self.synced:
                 cluster_size *= 25 
             if len(self.blocks_to_add) >= cluster_size:
-                _logger.debug("Committing blocks at %s", block_hash)
+                _logger.debug(f'Committing {cluster_size} blocks at {block_hash}')
                 await self.commit_blocks()
                 if self.batch_processing == False:
                     await self.commit_txs()
@@ -95,6 +95,7 @@ class BlocksProcessor(object):
                                              timeout=60)
             # go through each block and yield
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
+            _logger.info(f'Received {len(block_hashes)} blocks from getBlocksResponse')
             blocks = resp["getBlocksResponse"].get("blocks", [])
             for i, blockHash in enumerate(block_hashes):
                 if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
