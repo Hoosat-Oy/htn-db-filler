@@ -16,25 +16,25 @@ class BalanceProcessor(object):
         Fetch balance for the given address from the RPC node.
         """
         try:
-            response = await self.client.request("getBalanceByAddressRequest", {"address": address})
+            response = await self.client.request("getBalanceByAddressRequest", params= {"address": address}, timeout=10)
 
             get_balance_response = response.get("getBalanceByAddressResponse", {})
-            balance = get_balance_response.get("balance", 0)
+            balance = get_balance_response.get("balance", None)
             error = get_balance_response.get("error", None)
 
             if error:
                 _logger.error(f"Error fetching balance for address {address}: {error}")
-                return 0
+                return None
             
             if balance is not None:
                 return int(balance)
             
             _logger.error(f"Balance not found for address {address}: {response}")
-            return 0
+            return None
         
         except Exception as e:
             _logger.error(f"Error fetching balance for address {address}: {e}")
-            return 0
+            return None
 
     async def update_all_balances(self):
         with session_maker() as session:
