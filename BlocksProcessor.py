@@ -48,7 +48,10 @@ class BlocksProcessor(object):
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
             # if cluster size is reached, insert to database
-            if len(self.blocks_to_add) >= CLUSTER_SIZE:
+            cluster_size = CLUSTER_SIZE
+            if self.synced:
+                cluster_size *= 25 
+            if len(self.blocks_to_add) >= cluster_size:
                 _logger.debug("Committing blocks at %s", block_hash)
                 await self.commit_blocks()
                 if self.batch_processing == False:
