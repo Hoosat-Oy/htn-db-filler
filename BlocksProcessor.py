@@ -50,7 +50,7 @@ class BlocksProcessor(object):
             # if cluster size is reached, insert to database
             cluster_size = CLUSTER_SIZE
             if not self.synced:
-                cluster_size *= 25 
+                cluster_size *= 50 
             if len(self.blocks_to_add) >= cluster_size:
                 _logger.debug(f'Committing {cluster_size} blocks at {block_hash}')
                 await self.commit_blocks()
