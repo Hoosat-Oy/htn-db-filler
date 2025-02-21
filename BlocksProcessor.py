@@ -84,6 +84,7 @@ class BlocksProcessor(object):
         generator for iterating the blocks added to the blockDAG
         """
         low_hash = start_point
+        _logger.info('New low hash block %s.', low_hash)
         while True:
             daginfo = await self.client.request("getBlockDagInfoRequest", {})
             resp = await self.client.request("getBlocksRequest",
@@ -106,15 +107,11 @@ class BlocksProcessor(object):
                 yield blockHash, blocks[i]
             if self.synced: 
                 low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
-                _logger.info('New low hash block %s.', low_hash)
-                _logger.info(f'Waiting for the next blocks request.')
-                await asyncio.sleep(CLUSTER_WAIT_SECONDS)
             else:
                 if len(block_hashes) > 1:
                     low_hash = block_hashes[len(block_hashes) - 1]
-                    _logger.info('New low hash block %s.', low_hash)
-                else:
-                    _logger.info('Using old low hash block %s.', low_hash)
+            _logger.info(f'Waiting for the next blocks request.')
+            await asyncio.sleep(CLUSTER_WAIT_SECONDS)
                    
                 
 
