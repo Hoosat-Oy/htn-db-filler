@@ -331,7 +331,6 @@ class BlocksProcessor(object):
         """
         Insert queued blocks to database
         """
-        
         # delete already set old blocks
         with session_maker() as session:
             d = session.query(Block).filter(
@@ -344,6 +343,9 @@ class BlocksProcessor(object):
                 session.add(block)
             try:
                 session.commit()
+                _logger.debug(f'Added {len(self.blocks_to_add)} blocks to database. '
+                              f'Timestamp: {self.blocks_to_add[-1].timestamp}')
+
                 # reset queue
                 self.blocks_to_add = []
             except IntegrityError:
