@@ -88,6 +88,7 @@ class VirtualChainProcessor(object):
             
             # Mark last known/processed as start point for the next query
             if last_known_chain_block:
+                _logger.info(f'Setting new start point {last_known_chain_block} for VCP')
                 KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
                 self.start_hash = last_known_chain_block
             

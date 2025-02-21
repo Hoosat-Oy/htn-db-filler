@@ -84,8 +84,8 @@ class BlocksProcessor(object):
         generator for iterating the blocks added to the blockDAG
         """
         low_hash = start_point
-        _logger.info('New low hash block %s.', low_hash)
         while True:
+            _logger.info('New low hash block %s.', low_hash)
             daginfo = await self.client.request("getBlockDagInfoRequest", {})
             resp = await self.client.request("getBlocksRequest",
                                              params={
@@ -246,7 +246,6 @@ class BlocksProcessor(object):
         self.txs_input = []
         self.txs_output = []
 
-
     # Original commit_txs
     async def commit_txs(self):
         """
@@ -288,8 +287,6 @@ class BlocksProcessor(object):
                 session.rollback()
                 _logger.error('Error adding TXs to database')
                 raise
-
-
 
     async def __add_block_to_queue(self, block_hash, block):
         """
