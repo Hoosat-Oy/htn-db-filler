@@ -53,7 +53,7 @@ class HtndThread(object):
     def __exit__(self, *args):
         self.__closing = True
 
-    async def request(self, command, params=None, wait_for_response=True, timeout=5, retry=3):
+    async def request(self, command, params=None, wait_for_response=True, timeout=60, retry=3):
         if wait_for_response:
             attempt = 0
             retry_delay = 30

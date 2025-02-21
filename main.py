@@ -49,11 +49,9 @@ async def main():
     # initialize htnds
     await client.initialize_all()
 
-    # wait for client to be synced
-    # disable requirement to be synced.
-    # while client.htnds[0].is_synced == False:
-    #     _logger.debug('Client not synced yet. Waiting...')
-    #     time.sleep(60)
+    while client.htnds[0].is_synced == False:
+        _logger.debug('Client not synced yet. Waiting...')
+        time.sleep(60)
 
     # find last acceptedTx's block hash, when restarting this tool
     start_hash = KeyValueStore.get("vspc_last_start_hash")
