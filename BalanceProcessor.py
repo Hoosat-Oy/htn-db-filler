@@ -75,13 +75,13 @@ class BalanceProcessor(object):
                 if address_balance is None or address_balance is 0:
                     session.delete(balance)
                     _logger.info(f"Deleted balance record for address {address} as balance is 0.")
-                    
-                if balance and address_balance is not None and address_balance >= 0:
-                    balance.balance = address_balance
-                else:
-                    if address_balance > 0:
-                        balance = Balance(script_public_key_address=address, balance=address_balance)
-                        session.add(balance)
+                else: 
+                    if balance:
+                        balance.balance = address_balance
+                    else:
+                        if address_balance > 0:
+                            balance = Balance(script_public_key_address=address, balance=address_balance)
+                            session.add(balance)
 
                 session.commit()
             except Exception as e:
