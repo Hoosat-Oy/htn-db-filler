@@ -76,7 +76,7 @@ class BalanceProcessor(object):
                     session.delete(balance)
                     _logger.info(f"Deleted balance record for address {address} as balance is 0.")
                     
-                if balance and address_balance >= 0:
+                if balance and address_balance is not None and address_balance >= 0:
                     balance.balance = address_balance
                 else:
                     if address_balance > 0:
