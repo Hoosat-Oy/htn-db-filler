@@ -112,8 +112,6 @@ class BlocksProcessor(object):
                     low_hash = block_hashes[len(block_hashes) - 1]
             _logger.info(f'Waiting for the next blocks request.')
             await asyncio.sleep(CLUSTER_WAIT_SECONDS)
-                   
-                
 
     async def __add_tx_to_queue(self, block_hash, block):
         """

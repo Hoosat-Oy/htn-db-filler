@@ -73,7 +73,7 @@ class BalanceProcessor(object):
                 _logger.debug(f"Updating address {address} balance to {address_balance}")
 
                 if address_balance is None:
-                    return
+                    address_balance = 0
                 
                 if balance: 
                     balance.balance = address_balance
