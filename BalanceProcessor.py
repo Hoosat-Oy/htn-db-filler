@@ -16,7 +16,7 @@ class BalanceProcessor(object):
         Fetch balance for the given address from the RPC node.
         """
         try:
-            response = await self.client.request("getBalanceByAddressRequest", params= {"address": address}, timeout=30)
+            response = await self.client.request("getBalanceByAddressRequest", params= {"address": address}, timeout=60)
 
             get_balance_response = response.get("getBalanceByAddressResponse", {})
             balance = get_balance_response.get("balance", None)
@@ -72,16 +72,18 @@ class BalanceProcessor(object):
                 address_balance = await self._get_balance_from_rpc(address) 
                 _logger.debug(f"Updating address {address} balance to {address_balance}")
 
-                if address_balance is None:
-                    address_balance = 0
-                
-                if balance: 
+                if address_balance is None or address_balance is 0:
+                    session.delete(balance)
+                    _logger.info(f"Deleted balance record for address {address} as balance is 0.")
+                    
+                if balance and address_balance >= 0:
                     balance.balance = address_balance
-                else: 
-                    balance = Balance(script_public_key_address=address, balance=address_balance)
-                    session.add(balance)
+                else:
+                    if address_balance > 0:
+                        balance = Balance(script_public_key_address=address, balance=address_balance)
+                        session.add(balance)
 
-                session.commit() 
+                session.commit()
             except Exception as e:
-                _logger.error(f"Error fetching balance from the node for address {address}: {e}")
-                return 
+                _logger.error(f"Error updating balance for address {address}: {e}")
+                return
