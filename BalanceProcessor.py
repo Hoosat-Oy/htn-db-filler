@@ -16,7 +16,7 @@ class BalanceProcessor(object):
         Fetch balance for the given address from the RPC node.
         """
         try:
-            response = await self.client.request("getBalanceByAddressRequest", params= {"address": address}, timeout=10)
+            response = await self.client.request("getBalanceByAddressRequest", params= {"address": address}, timeout=30)
 
             get_balance_response = response.get("getBalanceByAddressResponse", {})
             balance = get_balance_response.get("balance", None)
