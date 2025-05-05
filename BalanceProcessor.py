@@ -72,7 +72,7 @@ class BalanceProcessor(object):
                 address_balance = await self._get_balance_from_rpc(address) 
                 _logger.debug(f"Updating address {address} balance to {address_balance}")
 
-                if address_balance is None or address_balance is 0:
+                if address_balance is None or address_balance == 0:
                     session.delete(balance)
                     _logger.info(f"Deleted balance record for address {address} as balance is 0.")
                 else: 
