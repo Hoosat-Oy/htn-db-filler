@@ -12,7 +12,7 @@ class HtndMultiClient(object):
 
     def __get_htnd(self):
         for k in self.htnds:
-            if k.is_utxo_indexed and k.is_synced:
+            if k.is_utxo_indexed:
                 return k
 
     async def initialize_all(self):
@@ -24,14 +24,14 @@ class HtndMultiClient(object):
     async def __request(self, command, params=None, timeout=60, retry=3):
         htnd = self.__get_htnd()
         if htnd is not None: 
-            return await htnd.request(command, params, timeout=timeout, retry=1)
+            return await htnd.request(command, params, timeout=timeout, retry=retry)
 
     async def request(self, command, params=None, timeout=60, retry=3):
         try:
-            return await self.__request(command, params, timeout=timeout, retry=1)
+            return await self.__request(command, params, timeout=timeout, retry=retry)
         except HtndCommunicationError:
             await self.initialize_all()
-            return await self.__request(command, params, timeout=timeout, retry=1)
+            return await self.__request(command, params, timeout=timeout, retry=retry)
 
     async def notify(self, command, params, callback):
         htnd = self.__get_htnd()

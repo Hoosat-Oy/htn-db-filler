@@ -56,34 +56,33 @@ class BalanceProcessor(object):
 
                 _logger.info(f"Found {len(addresses)} addresses to update balances.")
 
-                for address in addresses:
-                    await self.update_balance_from_rpc(address)
-                    await asyncio.sleep(0.1)  
+                
+                await self.update_balance_from_rpc(addresses)
+                await asyncio.sleep(0.1)  
 
             except Exception as e:
                 _logger.error(f"Error updating balances: {e}")
                 return
 
 
-    async def update_balance_from_rpc(self, address):
+    async def update_balance_from_rpc(self, addresses):
         with session_maker() as session:
-            try:
-                balance = session.query(Balance).filter(Balance.script_public_key_address == address).first()
-                address_balance = await self._get_balance_from_rpc(address) 
-                _logger.debug(f"Updating address {address} balance to {address_balance}")
+            existing_balances = {
+                b.script_public_key_address: b
+                for b in session.query(Balance).filter(Balance.script_public_key_address.in_(addresses)).all()
+            }
 
-                if address_balance is None or address_balance == 0:
-                    session.delete(balance)
-                    _logger.info(f"Deleted balance record for address {address} as balance is 0.")
-                else: 
-                    if balance:
-                        balance.balance = address_balance
-                    else:
-                        if address_balance > 0:
-                            balance = Balance(script_public_key_address=address, balance=address_balance)
-                            session.add(balance)
+            for address, existing_balance in existing_balances.items():
+                try:
+                    if existing_balances is not None:
+                        new_balance = await self._get_balance_from_rpc(address)
+                        _logger.debug(f"Updating address {address} balance to {new_balance}")
 
-                session.commit()
-            except Exception as e:
-                _logger.error(f"Error updating balance for address {address}: {e}")
-                return
+                        if new_balance is None or new_balance == 0:
+                            session.delete(existing_balance)
+                            _logger.info(f"Deleted balance record for address {address} as balance is 0.")
+                        else:
+                            existing_balance.balance = new_balance
+                except Exception as e:
+                    _logger.error(f"Error updating balance for address {address}: {e}")
+            session.commit()

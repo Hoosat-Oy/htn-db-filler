@@ -13,8 +13,14 @@ from utils.Event import Event
 
 _logger = logging.getLogger(__name__)
 
+# For 5 BPS
+# CLUSTER_SIZE = 4
+# CLUSTER_WAIT_SECONDS = 1
+
+# For 1 BPS
 CLUSTER_SIZE = 5
 CLUSTER_WAIT_SECONDS = 4
+
 B_TREE_SIZE = 2500
 
 task_runner = None
@@ -50,7 +56,7 @@ class BlocksProcessor(object):
             # if cluster size is reached, insert to database
             cluster_size = CLUSTER_SIZE
             if not self.synced:
-                cluster_size *= 50 
+                cluster_size = 403
             if len(self.blocks_to_add) >= cluster_size:
                 _logger.debug(f'Committing {cluster_size} blocks at {block_hash}')
                 await self.commit_blocks()
@@ -67,7 +73,7 @@ class BlocksProcessor(object):
         unique_addresses = list(set(addresses))
         for address in unique_addresses:    
             await self.balance.update_balance_from_rpc(address)
-            await asyncio.sleep(0.1)
+            # await asyncio.sleep(0.1)
         
 
     async def handle_blocks_committed(self):

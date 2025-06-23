@@ -60,8 +60,8 @@ async def main():
     daginfo = await client.request("getBlockDagInfoRequest", {})
     if daginfo is None:
         _logger.debug("Failed first BlockDagInfoRequest")
-    virtualParentHash = daginfo["getBlockDagInfoResponse"]["virtualParentHashes"][0]
     if not start_hash:
+        virtualParentHash = daginfo["getBlockDagInfoResponse"]["virtualParentHashes"][0]
         start_hash = virtualParentHash
 
     # if there is argument start_hash start with that instead of last acceptedTx or latest block.
