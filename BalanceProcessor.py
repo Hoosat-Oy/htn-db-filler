@@ -25,12 +25,10 @@ class BalanceProcessor(object):
 
             if error:
                 _logger.error(f"Error fetching balance for address {address}: {error}")
-                return None
             
             if balance is not None:
                 return int(balance)
             
-            _logger.error(f"Balance not found for address {address}: {response}")
             return None
         
         except Exception as e:
