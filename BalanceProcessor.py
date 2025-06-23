@@ -99,16 +99,11 @@ class BalanceProcessor(object):
                             # Get new balance from RPC
                             new_balance = await self._get_balance_from_rpc(address)
                             _logger.debug(f"Fetched balance {new_balance} for address {address}")
-
                             # Check if balance record exists
                             existing_balance = existing_balances.get(address)
 
-                            if new_balance == 0:
-                                # Delete record if it exists and balance is 0
-                                if existing_balance:
-                                    session.delete(existing_balance)
-                                    _logger.debug(f"Deleted balance record for address {address} (balance is 0)")
-                            else:
+                            if new_balance != None and new_balance != 0:
+
                                 # Update or create record
                                 if existing_balance:
                                     existing_balance.balance = new_balance
@@ -120,10 +115,13 @@ class BalanceProcessor(object):
                                     )
                                     session.add(new_record)
                                     _logger.debug(f"Created new balance record for address {address} with balance {new_balance}")
-
+                            else:
+                                if existing_balance: 
+                                    session.delete(existing_balance)
+                                    _logger.debug(f"Deleted balance record for address {address} (balance is 0)")
                         except Exception as e:
+                            session.delete(address)
                             _logger.error(f"Error processing address {address} in batch {i // batch_size + 1}: {e}")
-                            failed_addresses.append(address)
                             continue
 
                     # Commit changes for this batch
