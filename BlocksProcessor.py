@@ -5,6 +5,7 @@ import sys
 from datetime import datetime
 
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import SQLAlchemyError
 
 from dbsession import session_maker
 from models.Block import Block
@@ -70,10 +71,13 @@ class BlocksProcessor(object):
                     
 
     async def commit_balances(self, addresses):
-        unique_addresses = list(set(addresses))
-        for address in unique_addresses:    
-            await self.balance.update_balance_from_rpc(address)
-            # await asyncio.sleep(0.1)
+        try: 
+            unique_addresses = list(set(addresses))
+            for address in unique_addresses:    
+                await self.balance.update_balance_from_rpc(address)
+                # await asyncio.sleep(0.1)
+        except SQLAlchemyError as e:
+            _logger.error(f'Error updating balances for addresses {unique_addresses}: {e}')
         
 
     async def handle_blocks_committed(self):

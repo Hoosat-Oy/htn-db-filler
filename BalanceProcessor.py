@@ -5,6 +5,7 @@ import logging
 from typing import List
 from dbsession import session_maker
 from models.Balance import Balance
+from sqlalchemy.exc import SQLAlchemyError
 
 _logger = logging.getLogger(__name__)
 
