@@ -333,26 +333,27 @@ class BlocksProcessor(object):
         """
         Insert queued blocks to database
         """
-        # delete already set old blocks
         with session_maker() as session:
-            d = session.query(Block).filter(
-                Block.hash.in_([b.hash for b in self.blocks_to_add])).delete()
-            session.commit()
-
-        # insert blocks
-        with session_maker() as session:
-            for block in self.blocks_to_add:
-                session.add(block)
             try:
+                block_hashes = [b.hash for b in self.blocks_to_add]
+                _logger.debug(f'Committing blocks with hashes: {block_hashes}')
+                if block_hashes:
+                    session.query(Block).filter(Block.hash.in_(block_hashes)).delete(synchronize_session=False)
+                
+                for block in self.blocks_to_add:
+                    session.add(block)
+                
                 session.commit()
                 _logger.debug(f'Added {len(self.blocks_to_add)} blocks to database. '
-                              f'Timestamp: {self.blocks_to_add[-1].timestamp}')
-
-                # reset queue
+                            f'Timestamp: {self.blocks_to_add[-1].timestamp}')
                 self.blocks_to_add = []
-            except IntegrityError:
+            except IntegrityError as e:
                 session.rollback()
-                _logger.error('Error adding group of blocks')
+                _logger.error(f'Error adding group of blocks: {e}')
+                raise
+            except Exception as e:
+                session.rollback()
+                _logger.error(f'Unexpected error committing blocks: {e}')
                 raise
         
 
