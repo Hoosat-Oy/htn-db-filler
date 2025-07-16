@@ -73,8 +73,7 @@ class BlocksProcessor(object):
     async def commit_balances(self, addresses):
         try: 
             unique_addresses = list(set(addresses))
-            for address in unique_addresses:    
-                await self.balance.update_balance_from_rpc(address)
+            await self.balance.update_balance_from_rpc(unique_addresses)
             # await asyncio.sleep(0.1)
         except SQLAlchemyError as e:
             _logger.error(f'Error updating balances for addresses {unique_addresses}: {e}')
