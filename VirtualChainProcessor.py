@@ -97,26 +97,22 @@ class VirtualChainProcessor(object):
             self.virtual_chain_response = None
 
     async def get_block_children(self, block_hash: str):
-        try:
-            resp = await self.client.request("getBlockRequest",
-                                            params={
-                                                "Hash": block_hash,
-                                                "includeTransactions": True,
-                                            },
-                                            timeout=60)
-            _logger.info(f"Full getBlockRequest response: {resp}")
+        resp = await self.client.request("getBlockRequest",
+                                        params={
+                                            "Hash": block_hash,
+                                            "includeTransactions": True,
+                                        },
+                                        timeout=600)
+        _logger.info(f"Full getBlockRequest response: {resp}")
 
-            block = resp.get("getBlockResponse", {}).get("block")
-            if not block:
-                _logger.warning(f"No 'block' in getBlockResponse for hash {block_hash}")
-                return []
-
-            children = block.get("verboseData", {}).get("childrenHashes", [])
-            _logger.info(f"Children hashes for block {block_hash}: {children}")
-            return children
-        except Exception as e:
-            _logger.info(f"Exception in get_block_children: {e}")
+        block = resp.get("getBlockResponse", {}).get("block")
+        if not block:
+            _logger.warning(f"No 'block' in getBlockResponse for hash {block_hash}")
             return []
+
+        children = block.get("verboseData", {}).get("childrenHashes", [])
+        _logger.info(f"Children hashes for block {block_hash}: {children}")
+        return children
 
     async def yield_to_database(self):
         """
