@@ -43,6 +43,7 @@ class BlocksProcessor(object):
         self.vcp = vcp_instance
         self.env_enable_balance = env_enable_balance
         self.batch_processing = batch_processing
+        self.start_hash_set = False
 
         # Did the loop already see the DAG tip
         self.synced = False
@@ -54,6 +55,9 @@ class BlocksProcessor(object):
             # prepare add block and tx to database
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
+            if block["verboseData"].get("isChainBlock", False) and not self.start_hash_set: 
+                self.vcp.set_start_block(block, block_hash)
+                self.start_hash_set = True
             # if cluster size is reached, insert to database
             cluster_size = CLUSTER_SIZE
             if not self.synced:

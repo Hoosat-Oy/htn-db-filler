@@ -55,6 +55,7 @@ async def main():
 
     # find last acceptedTx's block hash, when restarting this tool
     start_hash = KeyValueStore.get("vspc_last_start_hash")
+    start_block = None
 
     # if there is nothing in the db, just get the first block after genesis.
     daginfo = await client.request("getBlockDagInfoRequest", {})
@@ -70,17 +71,27 @@ async def main():
         start_hash = env_start_hash
 
     _logger.info(f"Start hash: {start_hash}")
+    if start_hash:
+        resp = await client.request("getBlockRequest",
+                                             params={
+                                                 "hash": start_hash,
+                                                 "includeTransactions": True,
+                                             },
+                                             timeout=60)
+        if resp is not None and "getBlockResponse" in resp:
+            start_block = resp["getBlockResponse"].get("block", [])
 
     batch_processing_str = os.getenv('BATCH_PROCESSING', 'False')  # Default to 'False' if not set
     batch_processing = batch_processing_str.lower() in ['true', '1', 't', 'y', 'yes']
 
-    env_enable_balance = os.getenv('BALANCE_ENABLED', False)
+    env_enable_balance_str = os.getenv('BALANCE_ENABLED', 'False')
+    env_enable_balance = env_enable_balance_str.lower() in ['true', '1', 't', 'y', 'yes']
     env_update_balance_on_boot = os.getenv('UPDATE_BALANCE_ON_BOOT', False)
     bap = BalanceProcessor(client)
     if env_update_balance_on_boot is not False: 
         await bap.update_all_balances()
     # create instances of blocksprocessor and virtualchainprocessor
-    vcp = VirtualChainProcessor(client, start_hash)
+    vcp = VirtualChainProcessor(client, start_block, start_hash)
     bp = BlocksProcessor(client, vcp, bap, batch_processing, env_enable_balance)
 
     # start blocks processor working concurrent

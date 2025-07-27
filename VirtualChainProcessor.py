@@ -21,10 +21,15 @@ class VirtualChainProcessor(object):
     basically a temporary storage. This buffer should be processed AFTER the blocks and transactions are added.
     """
 
-    def __init__(self, client, start_hash):
+    def __init__(self, client, start_block, start_hash):
         self.virtual_chain_response = None
         self.start_hash = start_hash
         self.client = client
+        self.start_block = None
+
+    async def set_start_block(self, block, block_hash):
+        self.start_block = block
+        self.start_hash = block_hash
 
     async def __update_transactions_in_db(self):
         """
@@ -96,79 +101,109 @@ class VirtualChainProcessor(object):
             # Clear the current response
             self.virtual_chain_response = None
 
-    async def yield_to_database(self, max_retries=5000000):
-        """
-        Add known blocks to database by iteratively finding a valid start_hash.
-        
-        Args:
-            max_retries (int): Maximum number of retry attempts to find a valid start_hash.
-        """
-        _logger.info(f'VCP requested with start hash {self.start_hash}')
-        current_hash = self.start_hash
-        retries = 0
 
-        while retries < max_retries:
-            # Send getVirtualSelectedParentChainFromBlockRequest
-            resp = await self.client.request(
-                "getVirtualSelectedParentChainFromBlockRequest",
-                {"startHash": current_hash, "includeAcceptedTransactionIds": True},
-                timeout=240
-            )
-            
-            # Check for error in response
+    async def yield_to_database(self):
+        """
+        Add known blocks to database
+        """
+        if self.start_block and self.start_block["verboseData"].get("isChainBlock", False):
+            _logger.info(f'VCP requested with start hash {self.start_hash}')
+            resp = await self.client.request("getVirtualSelectedParentChainFromBlockRequest",
+                                            {"startHash": self.start_hash,
+                                            "includeAcceptedTransactionIds": True},
+                                            timeout=240)
+            # if there is a response, add to queue and set new startpoint
             error = resp["getVirtualSelectedParentChainFromBlockResponse"].get("error", None)
             if error is None:
-                # Success: Process the response
-                _logger.info(
-                    f'Got VCP response with: '
-                    f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("acceptedTransactionIds", []))} '
-                    f'acceptedTransactionIds, '
-                    f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("addedChainBlockHashes", []))} '
-                    f'addedChainBlockHashes, '
-                    f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("removedChainBlockHashes", []))} '
-                    f'removedChainBlockHashes'
-                )
+                _logger.info(f'Got VCP response with: '
+                            f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("acceptedTransactionIds", []))}'
+                            f' acceptedTransactionIds, '
+                            f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("addedChainBlockHashes", []))}'
+                            f' addedChainBlockHashes, '
+                            f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("removedChainBlockHashes", []))}'
+                            f' removedChainBlockHashes')
                 self.virtual_chain_response = resp["getVirtualSelectedParentChainFromBlockResponse"]
-                self.start_hash = current_hash  # Update start_hash to the successful one
+            else:
+                _logger.debug('getVirtualSelectedParentChain error response:')
+                _logger.info(error["message"])
+                self.virtual_chain_response = None
+
+            if self.virtual_chain_response is not None:
                 await self.__update_transactions_in_db()
-                return self.virtual_chain_response
 
-            # Error: Log and try to find a new start_hash
-            _logger.debug('getVirtualSelectedParentChain error response:')
-            _logger.info(error["message"])
+    # async def yield_to_database(self, max_retries=5000000):
+    #     """
+    #     Add known blocks to database by iteratively finding a valid start_hash.
+        
+    #     Args:
+    #         max_retries (int): Maximum number of retry attempts to find a valid start_hash.
+    #     """
+    #     _logger.info(f'VCP requested with start hash {self.start_hash}')
+    #     current_hash = self.start_hash
+    #     retries = 0
+
+    #     while retries < max_retries:
+    #         # Send getVirtualSelectedParentChainFromBlockRequest
+    #         resp = await self.client.request(
+    #             "getVirtualSelectedParentChainFromBlockRequest",
+    #             {"startHash": current_hash, "includeAcceptedTransactionIds": True},
+    #             timeout=240
+    #         )
             
-            # Request blocks data starting from the current hash
-            resp = await self.client.request(
-                "getBlocksRequest",
-                params={
-                    "lowHash": current_hash,
-                    "includeTransactions": False,
-                    "includeBlocks": True
-                },
-                timeout=60
-            )
+    #         # Check for error in response
+    #         error = resp["getVirtualSelectedParentChainFromBlockResponse"].get("error", None)
+    #         if error is None:
+    #             # Success: Process the response
+    #             _logger.info(
+    #                 f'Got VCP response with: '
+    #                 f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("acceptedTransactionIds", []))} '
+    #                 f'acceptedTransactionIds, '
+    #                 f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("addedChainBlockHashes", []))} '
+    #                 f'addedChainBlockHashes, '
+    #                 f'{len(resp["getVirtualSelectedParentChainFromBlockResponse"].get("removedChainBlockHashes", []))} '
+    #                 f'removedChainBlockHashes'
+    #             )
+    #             self.virtual_chain_response = resp["getVirtualSelectedParentChainFromBlockResponse"]
+    #             self.start_hash = current_hash  # Update start_hash to the successful one
+    #             await self.__update_transactions_in_db()
+    #             return self.virtual_chain_response
+
+    #         # Error: Log and try to find a new start_hash
+    #         _logger.debug('getVirtualSelectedParentChain error response:')
+    #         _logger.info(error["message"])
             
-            block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
-            _logger.info(f'Received {len(block_hashes)} blocks from getBlocksResponse')
-            blocks = resp["getBlocksResponse"].get("blocks", [])
+    #         # Request blocks data starting from the current hash
+    #         resp = await self.client.request(
+    #             "getBlocksRequest",
+    #             params={
+    #                 "lowHash": current_hash,
+    #                 "includeTransactions": False,
+    #                 "includeBlocks": True
+    #             },
+    #             timeout=60
+    #         )
             
-            if not blocks:
-                _logger.warning(f"No blocks in getBlocksResponse for lowHash {current_hash}")
-                return []
+    #         block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
+    #         _logger.info(f'Received {len(block_hashes)} blocks from getBlocksResponse')
+    #         blocks = resp["getBlocksResponse"].get("blocks", [])
+            
+    #         if not blocks:
+    #             _logger.warning(f"No blocks in getBlocksResponse for lowHash {current_hash}")
+    #             return []
 
-            # Get children hashes from the last block to skip forward
-            last_block = blocks[-1]
-            children = last_block.get("verboseData", {}).get("childrenHashes", [])
-            if not children:
-                _logger.warning(f"No children found for hash {last_block.get('hash')}")
-                return []
+    #         # Get children hashes from the last block to skip forward
+    #         last_block = blocks[-1]
+    #         children = last_block.get("verboseData", {}).get("childrenHashes", [])
+    #         if not children:
+    #             _logger.warning(f"No children found for hash {last_block.get('hash')}")
+    #             return []
 
-            # Try the first child hash of the last block in the next iteration
-            current_hash = children[0]
-            retries += len(blocks)
-            _logger.info(f'Retrying with new start_hash {current_hash} (attempt {retries + 1}/{max_retries})')
+    #         # Try the first child hash of the last block in the next iteration
+    #         current_hash = children[0]
+    #         retries += len(blocks)
+    #         _logger.info(f'Retrying with new start_hash {current_hash} (attempt {retries + 1}/{max_retries})')
 
-        # Exhausted retries or no children available
-        _logger.error(f"Failed to find a valid start_hash after {max_retries} retries")
-        self.virtual_chain_response = None
-        return []
+    #     # Exhausted retries or no children available
+    #     _logger.error(f"Failed to find a valid start_hash after {max_retries} retries")
+    #     self.virtual_chain_response = None
+    #     return []
