@@ -106,6 +106,7 @@ class VirtualChainProcessor(object):
         """
         Add known blocks to database
         """
+        _logger.info(self.start_block)
         if self.start_block is not None and self.start_block["verboseData"].get("isChainBlock", False):
             _logger.info(f'VCP requested with start hash {self.start_hash}')
             resp = await self.client.request("getVirtualSelectedParentChainFromBlockRequest",
