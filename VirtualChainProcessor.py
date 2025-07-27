@@ -112,6 +112,7 @@ class VirtualChainProcessor(object):
                                                  "includeTransactions": True,
                                              },
                                              timeout=60)
+        _logger.info(resp)
         _logger.info(resp["getBlockResponse"])
         _logger.info(resp["getBlockResponse"]["block"])
         _logger.info(resp["getBlockResponse"]["block"]["verboseData"])
