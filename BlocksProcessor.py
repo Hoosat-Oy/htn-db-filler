@@ -317,7 +317,7 @@ class BlocksProcessor(object):
                              blue_work=block["header"]["blueWork"],
                              daa_score=int(block["header"].get("daaScore", 0)),
                              hash_merkle_root=block["header"]["hashMerkleRoot"],
-                             nonce=block["header"]["nonce"],
+                             nonce=block["header"].get("nonce", 0),
                              parents=parent_hashes,
                              pruning_point=block["header"]["pruningPoint"],
                              timestamp=datetime.fromtimestamp(int(block["header"]["timestamp"]) / 1000).isoformat(),
