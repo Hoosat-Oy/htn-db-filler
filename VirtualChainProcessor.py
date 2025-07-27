@@ -73,7 +73,6 @@ class VirtualChainProcessor(object):
                 if rejected_blocks:
                     count = s.query(Transaction).filter(Transaction.accepting_block_hash.in_(rejected_blocks)) \
                         .update({'is_accepted': False, 'accepting_block_hash': None})
-                    _logger.infoSDN
                     _logger.info(f'Set is_accepted=False for {count} TXs')
                     s.commit()
 
