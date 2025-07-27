@@ -103,7 +103,7 @@ class VirtualChainProcessor(object):
                                             "Hash": block_hash,
                                             "includeTransactions": True,
                                         },
-                                        timeout=600)
+                                        timeout=240)
         _logger.info(f"Full getBlockRequest response: {resp}")
 
         block = resp.get("getBlockResponse", {}).get("block")
@@ -113,6 +113,7 @@ class VirtualChainProcessor(object):
 
         children = block.get("verboseData", {}).get("childrenHashes", [])
         _logger.info(f"Children hashes for block {block_hash}: {children}")
+        _logger.info("Returning..")
         return children
 
     async def yield_to_database(self):
