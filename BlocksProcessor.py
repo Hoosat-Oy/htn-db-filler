@@ -304,7 +304,6 @@ class BlocksProcessor(object):
             parent_hashes = block["header"]["parents"][0].get("parentHashes", [])
         else:
             parent_hashes = []
-        _logger.info(block_hash)
         block_entity = Block(hash=block_hash,
                              accepted_id_merkle_root=block["header"]["acceptedIdMerkleRoot"],
                              difficulty=block["verboseData"]["difficulty"],
