@@ -115,7 +115,7 @@ class VirtualChainProcessor(object):
             _logger.info(f"Children hashes for block {block_hash}: {children}")
             return children
         except Exception as e:
-            _logger.exception(f"Exception in get_block_children: {e}")
+            _logger.info(f"Exception in get_block_children: {e}")
             return []
 
     async def yield_to_database(self):
@@ -142,7 +142,7 @@ class VirtualChainProcessor(object):
             _logger.debug('getVirtualSelectedParentChain error response:')
             _logger.info(error["message"])
             children = await self.get_block_children(self.start_hash)
-            print(children)
+            _logger.info(children)
             if len(children) > 0:
                 self.start_hash = children[0]
             self.virtual_chain_response = None
