@@ -165,7 +165,7 @@ class VirtualChainProcessor(object):
 
             # Try the first child hash of the last block in the next iteration
             current_hash = children[0]
-            retries += 1
+            retries += len(blocks)
             _logger.info(f'Retrying with new start_hash {current_hash} (attempt {retries + 1}/{max_retries})')
 
         # Exhausted retries or no children available
