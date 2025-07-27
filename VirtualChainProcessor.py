@@ -113,7 +113,7 @@ class VirtualChainProcessor(object):
                                                  "includeTransactions": True,
                                              },
                                              timeout=60)
-        return resp["getBlocksResponse"]["block"]["verboseData"].get("childrenHashes", [])
+        return resp["getBlockResponse"]["block"]["verboseData"].get("childrenHashes", [])
 
     async def yield_to_database(self):
         """
@@ -139,6 +139,7 @@ class VirtualChainProcessor(object):
             _logger.debug('getVirtualSelectedParentChain error response:')
             _logger.info(error["message"])
             children = await self.get_block_children(self.start_hash)
+            print(children)
             if len(children) > 0:
                 self.start_hash = children[0]
             self.virtual_chain_response = None
