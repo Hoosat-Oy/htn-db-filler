@@ -97,6 +97,7 @@ class VirtualChainProcessor(object):
             self.virtual_chain_response = None
 
     async def get_block_children(self, block_hash: str):
+        _logger.info(f"Getting children!")
         resp = await self.client.request("getBlockRequest",
                                         params={
                                             "Hash": block_hash,
