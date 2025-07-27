@@ -96,26 +96,6 @@ class VirtualChainProcessor(object):
             # Clear the current response
             self.virtual_chain_response = None
 
-    async def get_block_children(self, block_hash: str):
-        _logger.info(f"Getting children!")
-        resp = await self.client.request("getBlockRequest",
-                                        params={
-                                            "Hash": block_hash,
-                                            "includeTransactions": True,
-                                        },
-                                        timeout=240)
-        _logger.info(f"Full getBlockRequest response: {resp}")
-
-        block = resp.get("getBlockResponse", {}).get("block")
-        if not block:
-            _logger.warning(f"No 'block' in getBlockResponse for hash {block_hash}")
-            return []
-
-        children = block.get("verboseData", {}).get("childrenHashes", [])
-        _logger.info(f"Children hashes for block {block_hash}: {children}")
-        _logger.info("Returning..")
-        return children
-
     async def yield_to_database(self):
         """
         Add known blocks to database
@@ -139,8 +119,19 @@ class VirtualChainProcessor(object):
         else:
             _logger.debug('getVirtualSelectedParentChain error response:')
             _logger.info(error["message"])
-            children = await self.get_block_children(self.start_hash)
-            _logger.info(children)
+            resp = await self.client.request("getBlockRequest",
+                                        params={
+                                            "hash": self.start_hash,
+                                            "includeTransactions": True,
+                                        },
+                                        timeout=240)
+            _logger.info(f"Full getBlockRequest response: {resp}")
+            block = resp.get("getBlockResponse", {}).get("block")
+            if not block:
+                _logger.warning(f"No 'block' in getBlockResponse for hash {self.start_hash}")
+                return []
+
+            children = block.get("verboseData", {}).get("childrenHashes", [])
             if len(children) > 0:
                 self.start_hash = children[0]
             self.virtual_chain_response = None
