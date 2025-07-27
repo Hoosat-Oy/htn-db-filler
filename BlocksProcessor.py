@@ -55,7 +55,7 @@ class BlocksProcessor(object):
             # prepare add block and tx to database
             await self.__add_block_to_queue(block_hash, block)
             await self.__add_tx_to_queue(block_hash, block)
-            if block["verboseData"].get("isChainBlock", False) and not self.start_hash_set: 
+            if not block["verboseData"].get("isHeaderOnly", True) and not self.start_hash_set: 
                 await self.vcp.set_start_block(block, block_hash)
                 self.start_hash_set = True
             # if cluster size is reached, insert to database
