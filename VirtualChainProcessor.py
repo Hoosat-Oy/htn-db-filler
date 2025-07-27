@@ -109,7 +109,7 @@ class VirtualChainProcessor(object):
         """
         resp = await self.client.request("getBlockRequest",
                                              params={
-                                                 "lowHash": block_hash,
+                                                 "Hash": block_hash,
                                                  "includeTransactions": True,
                                              },
                                              timeout=60)
