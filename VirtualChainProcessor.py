@@ -12,7 +12,6 @@ from models.Transaction import Transaction
 
 _logger = logging.getLogger(__name__)
 
-
 class VirtualChainProcessor(object):
     """
     VirtualChainProcessor polls the command getVirtualSelectedParentChainFromBlockRequest and updates transactions
@@ -74,6 +73,7 @@ class VirtualChainProcessor(object):
                 if rejected_blocks:
                     count = s.query(Transaction).filter(Transaction.accepting_block_hash.in_(rejected_blocks)) \
                         .update({'is_accepted': False, 'accepting_block_hash': None})
+                    _logger.infoSDN
                     _logger.info(f'Set is_accepted=False for {count} TXs')
                     s.commit()
 
@@ -107,12 +107,12 @@ class VirtualChainProcessor(object):
         Returns:
             List[str]: A list of block hashes that have the input block_hash as a parent.
         """
-        with session_maker() as session:
+        async with session_maker() as session:
             try:
                 # Query blocks where the given block_hash is in the parents array
                 stmt = select(Block.hash).where(Block.parents.contains([block_hash]))
-                result = await session.execute(stmt)
-                children_hashes = [row[0] for row in result.fetchall()]
+                result = await session.scalars(stmt)  # Use scalars to get direct results
+                children_hashes = result.all()  # Fetch all results as a list
                 return children_hashes
             except Exception as e:
                 _logger.error(f"Error retrieving children for block {block_hash}: {e}")
@@ -141,9 +141,9 @@ class VirtualChainProcessor(object):
         else:
             _logger.debug('getVirtualSelectedParentChain error response:')
             _logger.info(error["message"])
-            chilren = await self.get_block_children(self.start_hash)
-            if len(chilren) > 0:
-                self.start_hash = chilren[0]
+            children = await self.get_block_children(self.start_hash)
+            if len(children) > 0:
+                self.start_hash = children[0]
             self.virtual_chain_response = None
 
         if self.virtual_chain_response is not None:
