@@ -96,7 +96,7 @@ class VirtualChainProcessor(object):
             # Clear the current response
             self.virtual_chain_response = None
 
-    async def yield_to_database(self, max_retries=1000000):
+    async def yield_to_database(self, max_retries=5000000):
         """
         Add known blocks to database by iteratively finding a valid start_hash.
         
@@ -137,24 +137,33 @@ class VirtualChainProcessor(object):
             _logger.debug('getVirtualSelectedParentChain error response:')
             _logger.info(error["message"])
             
-            # Request block data for the current hash
+            # Request blocks data starting from the current hash
             resp = await self.client.request(
-                "getBlockRequest",
-                params={"hash": current_hash, "includeTransactions": True},
-                timeout=240
+                "getBlocksRequest",
+                params={
+                    "lowHash": current_hash,
+                    "includeTransactions": False,
+                    "includeBlocks": True
+                },
+                timeout=60
             )
-            block = resp.get("getBlockResponse", {}).get("block")
-            if not block:
-                _logger.warning(f"No 'block' in getBlockResponse for hash {current_hash}")
+            
+            block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
+            _logger.info(f'Received {len(block_hashes)} blocks from getBlocksResponse')
+            blocks = resp["getBlocksResponse"].get("blocks", [])
+            
+            if not blocks:
+                _logger.warning(f"No blocks in getBlocksResponse for lowHash {current_hash}")
                 return []
 
-            # Get children hashes
-            children = block.get("verboseData", {}).get("childrenHashes", [])
+            # Get children hashes from the last block to skip forward
+            last_block = blocks[-1]
+            children = last_block.get("verboseData", {}).get("childrenHashes", [])
             if not children:
-                _logger.warning(f"No children found for hash {current_hash}")
+                _logger.warning(f"No children found for hash {last_block.get('hash')}")
                 return []
 
-            # Try the first child hash in the next iteration
+            # Try the first child hash of the last block in the next iteration
             current_hash = children[0]
             retries += 1
             _logger.info(f'Retrying with new start_hash {current_hash} (attempt {retries + 1}/{max_retries})')
