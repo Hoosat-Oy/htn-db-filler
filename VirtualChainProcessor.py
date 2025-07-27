@@ -2,7 +2,9 @@
 import asyncio
 import os
 import logging
+from typing import List
 
+from sqlalchemy import select
 from dbsession import session_maker
 from helper import KeyValueStore
 from models.Block import Block
@@ -95,6 +97,27 @@ class VirtualChainProcessor(object):
             # Clear the current response
             self.virtual_chain_response = None
 
+    async def get_block_children(self, block_hash: str) -> List[str]:
+        """
+        Retrieve the children block hashes for a given block hash.
+        
+        Args:
+            block_hash (str): The hash of the block to find children for.
+            
+        Returns:
+            List[str]: A list of block hashes that have the input block_hash as a parent.
+        """
+        with session_maker() as session:
+            try:
+                # Query blocks where the given block_hash is in the parents array
+                stmt = select(Block.hash).where(Block.parents.contains([block_hash]))
+                result = await session.execute(stmt)
+                children_hashes = [row[0] for row in result.fetchall()]
+                return children_hashes
+            except Exception as e:
+                _logger.error(f"Error retrieving children for block {block_hash}: {e}")
+                return []
+
     async def yield_to_database(self):
         """
         Add known blocks to database
@@ -104,7 +127,6 @@ class VirtualChainProcessor(object):
                                          {"startHash": self.start_hash,
                                           "includeAcceptedTransactionIds": True},
                                          timeout=240)
-        _logger.info(resp)
         # if there is a response, add to queue and set new startpoint
         error = resp["getVirtualSelectedParentChainFromBlockResponse"].get("error", None)
         if error is None:
@@ -118,7 +140,10 @@ class VirtualChainProcessor(object):
             self.virtual_chain_response = resp["getVirtualSelectedParentChainFromBlockResponse"]
         else:
             _logger.debug('getVirtualSelectedParentChain error response:')
-            _logger.debug(error["message"])
+            _logger.info(error["message"])
+            chilren = await self.get_block_children(self.start_hash)
+            if len(chilren) > 0:
+                self.start_hash = chilren[0]
             self.virtual_chain_response = None
 
         if self.virtual_chain_response is not None:
