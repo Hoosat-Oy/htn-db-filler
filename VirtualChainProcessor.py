@@ -96,28 +96,27 @@ class VirtualChainProcessor(object):
             # Clear the current response
             self.virtual_chain_response = None
 
-    async def get_block_children(self, block_hash: str) -> List[str]:
-        """
-        Retrieve the children block hashes for a given block hash.
-        
-        Args:
-            block_hash (str): The hash of the block to find children for.
-            
-        Returns:
-            List[str]: A list of block hashes that have the input block_hash as a parent.
-        """
-        resp = await self.client.request("getBlockRequest",
-                                             params={
-                                                 "Hash": block_hash,
-                                                 "includeTransactions": True,
-                                             },
-                                             timeout=60)
-        _logger.info(resp)
-        _logger.info(resp["getBlockResponse"])
-        _logger.info(resp["getBlockResponse"]["block"])
-        _logger.info(resp["getBlockResponse"]["block"]["verboseData"])
-        _logger.info(resp["getBlockResponse"]["block"]["verboseData"].get("childrenHashes", []))
-        return resp["getBlockResponse"]["block"]["verboseData"].get("childrenHashes", [])
+    async def get_block_children(self, block_hash: str):
+        try:
+            resp = await self.client.request("getBlockRequest",
+                                            params={
+                                                "Hash": block_hash,
+                                                "includeTransactions": True,
+                                            },
+                                            timeout=60)
+            _logger.info(f"Full getBlockRequest response: {resp}")
+
+            block = resp.get("getBlockResponse", {}).get("block")
+            if not block:
+                _logger.warning(f"No 'block' in getBlockResponse for hash {block_hash}")
+                return []
+
+            children = block.get("verboseData", {}).get("childrenHashes", [])
+            _logger.info(f"Children hashes for block {block_hash}: {children}")
+            return children
+        except Exception as e:
+            _logger.exception(f"Exception in get_block_children: {e}")
+            return []
 
     async def yield_to_database(self):
         """
