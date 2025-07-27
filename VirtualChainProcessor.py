@@ -107,16 +107,13 @@ class VirtualChainProcessor(object):
         Returns:
             List[str]: A list of block hashes that have the input block_hash as a parent.
         """
-        async with session_maker() as session:
-            try:
-                # Query blocks where the given block_hash is in the parents array
-                stmt = select(Block.hash).where(Block.parents.contains([block_hash]))
-                result = await session.scalars(stmt)  # Use scalars to get direct results
-                children_hashes = result.all()  # Fetch all results as a list
-                return children_hashes
-            except Exception as e:
-                _logger.error(f"Error retrieving children for block {block_hash}: {e}")
-                return []
+        resp = await self.client.request("getBlockRequest",
+                                             params={
+                                                 "lowHash": block_hash,
+                                                 "includeTransactions": True,
+                                             },
+                                             timeout=60)
+        return resp["getBlocksResponse"]["block"]["verboseData"].get("childrenHashes", [])
 
     async def yield_to_database(self):
         """
