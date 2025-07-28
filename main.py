@@ -70,6 +70,10 @@ async def main():
     if env_start_hash != None:
         start_hash = env_start_hash
 
+    find_start_block_str = os.getenv('FIND_START_BLOCK', 'False')  # Default to 'False' if not set
+    find_start_block = find_start_block_str.lower() in ['true', '1', 't', 'y', 'yes']
+
+
     _logger.info(f"Start hash: {start_hash}")
     if start_hash:
         resp = await client.request("getBlockRequest",
@@ -80,6 +84,23 @@ async def main():
                                              timeout=60)
         if resp is not None and "getBlockResponse" in resp:
             start_block = resp["getBlockResponse"].get("block", [])
+    if find_start_block:
+        while start_block is None:
+            resp = await self.client.request("getBlocksRequest",
+                                             params={
+                                                 "lowHash": low_hash,
+                                                 "includeTransactions": True,
+                                                 "includeBlocks": True
+                                             },
+                                             timeout=60)
+            # go through each block and yield
+            block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
+            _logger.info(f'Received {len(block_hashes)} blocks from getBlocksResponse')
+            blocks = resp["getBlocksResponse"].get("blocks", [])
+            if blocks[len(blocks)-1]["verboseData"].get("isHeaderOnly", True) == False:
+                start_block = blocks[len(blocks)-1]
+                start_hash = block_hashes[len(blocks)-1]
+                _logger.info(f"Found start block: {start_block['hash']}")
 
     batch_processing_str = os.getenv('BATCH_PROCESSING', 'False')  # Default to 'False' if not set
     batch_processing = batch_processing_str.lower() in ['true', '1', 't', 'y', 'yes']
