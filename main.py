@@ -86,7 +86,7 @@ async def main():
             start_block = resp["getBlockResponse"].get("block", [])
     if find_start_block:
         while start_block is None:
-            resp = await self.client.request("getBlocksRequest",
+            resp = await client.request("getBlocksRequest",
                                              params={
                                                  "lowHash": low_hash,
                                                  "includeTransactions": True,
