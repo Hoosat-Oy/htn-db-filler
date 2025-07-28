@@ -89,6 +89,7 @@ async def main():
         _logger.info("Finding start block...")
         low_hash = start_hash
         found = False
+        headers_processed = 0
         while found == False:
             resp = await client.request("getBlocksRequest",
                                              params={
@@ -99,9 +100,10 @@ async def main():
                                              timeout=60)
             # go through each block and yield
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
-            _logger.info(f'Received {len(block_hashes)} blocks from getBlocksResponse')
             blocks = resp["getBlocksResponse"].get("blocks", [])
             low_hash = block_hashes[0]
+            headers_processed += len(blocks)
+            _logger.info(f'Processed {headers_processed} headers so far.')
             if blocks[len(blocks)-1]["verboseData"].get("isHeaderOnly", True) == False:
                 found = True
                 start_block = blocks[len(blocks)-1]
