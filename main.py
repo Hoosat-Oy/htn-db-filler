@@ -85,8 +85,10 @@ async def main():
         if resp is not None and "getBlockResponse" in resp:
             start_block = resp["getBlockResponse"].get("block", [])
     if find_start_block:
+        _logger.info("Finding start block...")
         low_hash = start_hash
-        while start_block is None:
+        found = False
+        while found == False:
             resp = await client.request("getBlocksRequest",
                                              params={
                                                  "lowHash": low_hash,
@@ -100,6 +102,7 @@ async def main():
             blocks = resp["getBlocksResponse"].get("blocks", [])
             low_hash = block_hashes[0]
             if blocks[len(blocks)-1]["verboseData"].get("isHeaderOnly", True) == False:
+                found = True
                 start_block = blocks[len(blocks)-1]
                 start_hash = block_hashes[len(blocks)-1]
                 _logger.info(f"Found start block: {start_block['hash']}")
