@@ -104,11 +104,14 @@ async def main():
             low_hash = block_hashes[0]
             headers_processed += len(blocks)
             _logger.info(f'Processed {headers_processed} headers so far.')
-            if blocks[len(blocks)-1]["verboseData"].get("isHeaderOnly", True) == False:
-                found = True
-                start_block = blocks[len(blocks)-1]
-                start_hash = block_hashes[len(blocks)-1]
-                _logger.info(f"Found start block: {start_block['hash']}")
+            for i in range(len(blocks)):
+                block = blocks[i]
+                block_hash = block_hashes[i]
+                if block["verboseData"].get("isHeaderOnly", True) == False:
+                    found = True
+                    start_block = block
+                    start_hash = block_hash
+                    _logger.info(f"Found start block: {start_block['hash']}")
 
     batch_processing_str = os.getenv('BATCH_PROCESSING', 'False')  # Default to 'False' if not set
     batch_processing = batch_processing_str.lower() in ['true', '1', 't', 'y', 'yes']
