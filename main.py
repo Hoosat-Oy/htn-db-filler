@@ -90,7 +90,7 @@ async def main():
             resp = await client.request("getBlocksRequest",
                                              params={
                                                  "lowHash": low_hash,
-                                                 "includeTransactions": True,
+                                                 "includeTransactions": False,
                                                  "includeBlocks": True
                                              },
                                              timeout=60)
