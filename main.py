@@ -73,7 +73,7 @@ async def main():
     find_start_block_str = os.getenv('FIND_START_BLOCK', 'False')  # Default to 'False' if not set
     find_start_block = find_start_block_str.lower() in ['true', '1', 't', 'y', 'yes']
 
-
+    _logger.info(f"Find start block: {find_start_block}")
     _logger.info(f"Start hash: {start_hash}")
     if start_hash:
         resp = await client.request("getBlockRequest",
@@ -84,6 +84,7 @@ async def main():
                                              timeout=60)
         if resp is not None and "getBlockResponse" in resp:
             start_block = resp["getBlockResponse"].get("block", [])
+
     if find_start_block:
         _logger.info("Finding start block...")
         low_hash = start_hash
