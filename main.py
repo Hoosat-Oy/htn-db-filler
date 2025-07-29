@@ -101,7 +101,7 @@ async def main():
             # go through each block and yield
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             blocks = resp["getBlocksResponse"].get("blocks", [])
-            low_hash = block_hashes[15]
+            low_hash = block_hashes[len(block_hashes) - 1]
             headers_processed += 15
             _logger.info(f'Processed {headers_processed} headers so far.')
             for i in range(len(blocks)):
