@@ -94,14 +94,14 @@ async def main():
             resp = await client.request("getBlocksRequest",
                                              params={
                                                  "lowHash": low_hash,
-                                                 "includeTransactions": True,
-                                                 "includeBlocks": True
+                                                 "includeBlocks": True,
+                                                 "includeTransactions": False
                                              },
                                              timeout=60)
             # go through each block and yield
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             blocks = resp["getBlocksResponse"].get("blocks", [])
-            low_hash = block_hashes[0]
+            low_hash = block_hashes[len(block_hashes) - 1]
             headers_processed += len(blocks)
             _logger.info(f'Processed {headers_processed} headers so far.')
             for i in range(len(blocks)):
