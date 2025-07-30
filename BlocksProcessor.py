@@ -107,7 +107,7 @@ class BlocksProcessor(object):
                                                     "includeTransactions": True,
                                                     "includeBlocks": True
                                                 },
-                                                timeout=10)
+                                                timeout=30)
                 # go through each block and yield
                 if resp != None:
                     block_response = resp.get("getBlocksResponse", None)
@@ -131,6 +131,7 @@ class BlocksProcessor(object):
                             if len(block_hashes) > 1:
                                 low_hash = block_hashes[len(block_hashes) - 1]
                             _logger.info('New low hash block %s.', low_hash)
+                            time.sleep(1)
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
