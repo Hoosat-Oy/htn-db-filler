@@ -108,25 +108,27 @@ class BlocksProcessor(object):
                                              },
                                              timeout=10)
             # go through each block and yield
-            block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
-            _logger.info(f'Received {len(block_hashes)} blocks from getBlocksResponse')
-            blocks = resp["getBlocksResponse"].get("blocks", [])
-            for i, blockHash in enumerate(block_hashes):
-                if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
-                    _logger.info('Found tip hash. Generator is synced now.')
-                    self.synced = True
-                    break # Dont iterate over the tipHash, because getBlock request returns old blocks. 
-                # yield blockhash and it's data
-                yield blockHash, blocks[i]
-            if self.synced: 
-                low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
-                _logger.info(f'Waiting for the next blocks request.')
-                time.sleep(CLUSTER_WAIT_SECONDS)
-                _logger.info('New low hash block %s.', low_hash)
-            else:
-                if len(block_hashes) > 1:
-                    low_hash = block_hashes[len(block_hashes) - 1]
-                _logger.info('New low hash block %s.', low_hash)
+            block_response = resp.get("getBlocksResponse", None)
+            if block_response != None:
+                block_hashes = block_response.get("blockHashes", [])
+                _logger.info(f'Received {len(block_hashes)} blocks from getBlocksResponse')
+                blocks = block_response.get("blocks", [])
+                for i, blockHash in enumerate(block_hashes):
+                    if daginfo["getBlockDagInfoResponse"]["tipHashes"][0] == blockHash:
+                        _logger.info('Found tip hash. Generator is synced now.')
+                        self.synced = True
+                        break # Dont iterate over the tipHash, because getBlock request returns old blocks. 
+                    # yield blockhash and it's data
+                    yield blockHash, blocks[i]
+                if self.synced: 
+                    low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
+                    _logger.info(f'Waiting for the next blocks request.')
+                    time.sleep(CLUSTER_WAIT_SECONDS)
+                    _logger.info('New low hash block %s.', low_hash)
+                else:
+                    if len(block_hashes) > 1:
+                        low_hash = block_hashes[len(block_hashes) - 1]
+                    _logger.info('New low hash block %s.', low_hash)
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
