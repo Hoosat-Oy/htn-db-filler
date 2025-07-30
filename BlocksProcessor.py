@@ -79,7 +79,6 @@ class BlocksProcessor(object):
         try: 
             unique_addresses = list(set(addresses))
             await self.balance.update_balance_from_rpc(unique_addresses)
-            # await asyncio.sleep(0.1)
         except SQLAlchemyError as e:
             _logger.error(f'Error updating balances for addresses {unique_addresses}: {e}')
         

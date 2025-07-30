@@ -2,6 +2,7 @@
 import asyncio
 import logging
 
+import time
 from typing import List
 from dbsession import session_maker
 from models.Balance import Balance
@@ -58,7 +59,7 @@ class BalanceProcessor(object):
 
                 
                 await self.update_balance_from_rpc(addresses, 10)
-                await asyncio.sleep(0.1)  
+                time.sleep(0.1)
 
             except Exception as e:
                 _logger.error(f"Error updating balances: {e}")

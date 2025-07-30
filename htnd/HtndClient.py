@@ -1,5 +1,6 @@
 # encoding: utf-8
 import asyncio
+import time
 
 from htnd.HtndThread import HtndThread, HtndCommunicationError
 import logging
@@ -39,7 +40,7 @@ class HtndClient(object):
                 if i == retry:
                     raise
                 else:
-                    await asyncio.sleep(0.3)
+                    time.sleep(0.1)
             except Exception:
                 raise
 
