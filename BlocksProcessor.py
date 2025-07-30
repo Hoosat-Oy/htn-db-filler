@@ -3,6 +3,7 @@ import asyncio
 import logging
 import sys
 from datetime import datetime
+import time
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,7 +20,7 @@ _logger = logging.getLogger(__name__)
 # CLUSTER_WAIT_SECONDS = 1
 
 # For 1 BPS
-CLUSTER_SIZE = 5
+CLUSTER_SIZE = 25
 CLUSTER_WAIT_SECONDS = 5
 
 B_TREE_SIZE = 2500
@@ -121,6 +122,7 @@ class BlocksProcessor(object):
             if self.synced: 
                 low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
                 _logger.info(f'Waiting for the next blocks request.')
+                time.sleep(CLUSTER_WAIT_SECONDS)
                 _logger.info('New low hash block %s.', low_hash)
             else:
                 if len(block_hashes) > 1:
