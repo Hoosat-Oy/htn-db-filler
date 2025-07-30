@@ -132,6 +132,10 @@ class BlocksProcessor(object):
                                 low_hash = block_hashes[len(block_hashes) - 1]
                             _logger.info('New low hash block %s.', low_hash)
                             time.sleep(1)
+                else: 
+                    time.sleep(10)
+            else: 
+                time.sleep(10)
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
