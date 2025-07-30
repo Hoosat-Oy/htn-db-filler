@@ -63,7 +63,6 @@ class HtndThread(object):
                     async for resp in self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout):
                         self.__queue.put_nowait("done")
                         return json_format.MessageToDict(resp)
-                    printf("Retrying previous call")
                 except grpc.aio._call.AioRpcError as e:
                     attempt += 1
                     if attempt >= retry:
