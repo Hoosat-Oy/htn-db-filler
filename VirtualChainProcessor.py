@@ -2,6 +2,7 @@
 import asyncio
 import os
 import logging
+import time
 from typing import List
 
 from sqlalchemy import select
@@ -97,6 +98,7 @@ class VirtualChainProcessor(object):
                 _logger.info(f'Setting new start point {last_known_chain_block} for VCP')
                 KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
                 self.start_hash = last_known_chain_block
+                time.sleep(5)
             
             # Clear the current response
             self.virtual_chain_response = None
