@@ -107,8 +107,8 @@ async def main():
             for i in range(len(blocks)):
                 block = blocks[i]
                 block_hash = block_hashes[i]
-                _logger.info(f"Block hash: {block_hash}, isHeaderOnly: {block['verboseData']['isHeaderOnly']}")
-                if block["verboseData"]['isHeaderOnly'] == False:
+                _logger.info(f"Block hash: {block_hash}, isHeaderOnly: {block['verboseData'].get('isHeaderOnly')}")
+                if block["verboseData"].get('isHeaderOnly') == False:
                     found = True
                     start_block = block
                     start_hash = block_hash
