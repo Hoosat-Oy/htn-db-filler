@@ -333,21 +333,36 @@ class BlocksProcessor(object):
 
     async def commit_blocks(self):
         """
-        Insert queued blocks to database
+        Insert queued blocks to database only if they don't already exist
         """
         with session_maker() as session:
             try:
+                blocks_to_insert = []
                 block_hashes = [b.hash for b in self.blocks_to_add]
-                _logger.debug(f'Committing blocks with hashes: {block_hashes}')
-                if block_hashes:
-                    session.query(Block).filter(Block.hash.in_(block_hashes)).delete(synchronize_session=False)
+                _logger.debug(f'Checking blocks with hashes: {block_hashes}')
                 
+                # Check which blocks already exist
+                existing_hashes = set(
+                    session.query(Block.hash)
+                    .filter(Block.hash.in_(block_hashes))
+                    .all()
+                )
+                existing_hashes = {h[0] for h in existing_hashes}
+                
+                # Only add blocks that don't exist
                 for block in self.blocks_to_add:
-                    session.add(block)
+                    if block.hash not in existing_hashes:
+                        blocks_to_insert.append(block)
                 
-                session.commit()
-                _logger.debug(f'Added {len(self.blocks_to_add)} blocks to database. '
-                            f'Timestamp: {self.blocks_to_add[-1].timestamp}')
+                if blocks_to_insert:
+                    for block in blocks_to_insert:
+                        session.add(block)
+                    session.commit()
+                    _logger.debug(f'Added {len(blocks_to_insert)} new blocks to database. '
+                                f'Timestamp: {blocks_to_insert[-1].timestamp}')
+                else:
+                    _logger.debug('No new blocks to add to database.')
+                
                 self.blocks_to_add = []
             except IntegrityError as e:
                 session.rollback()
