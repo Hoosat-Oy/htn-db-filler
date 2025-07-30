@@ -15,12 +15,12 @@ from utils.Event import Event
 _logger = logging.getLogger(__name__)
 
 # For 5 BPS
-CLUSTER_SIZE = 4
-CLUSTER_WAIT_SECONDS = 1
+# CLUSTER_SIZE = 4
+# CLUSTER_WAIT_SECONDS = 1
 
 # For 1 BPS
-# CLUSTER_SIZE = 5
-# CLUSTER_WAIT_SECONDS = 4
+CLUSTER_SIZE = 5
+CLUSTER_WAIT_SECONDS = 5
 
 B_TREE_SIZE = 2500
 
