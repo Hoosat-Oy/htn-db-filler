@@ -106,6 +106,7 @@ async def main():
                 _logger.info(f"Checking next possible low hash {block['verboseData']['hash']}")
                 if block['verboseData']['hash'] != low_hash:
                     low_hash = block_hashes[i]
+                    break
             headers_processed += len(blocks)
             _logger.info(f'Processed {headers_processed} headers so far.')
             for i in range(len(blocks)):
