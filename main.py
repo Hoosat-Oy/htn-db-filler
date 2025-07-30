@@ -45,6 +45,7 @@ if not htnd_hosts:
 # create Htnd client
 client = HtndMultiClient(htnd_hosts)
 
+
 async def main():
     # initialize htnds
     await client.initialize_all()
@@ -90,6 +91,7 @@ async def main():
         low_hash = start_hash
         found = False
         headers_processed = 0
+        used_low_hashes = []
         while found == False:
             resp = await client.request("getBlocksRequest",
                                              params={
@@ -102,22 +104,29 @@ async def main():
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             blocks = resp["getBlocksResponse"].get("blocks", [])
             _logger.info(f"Current low hash: {low_hash}, found {len(blocks)} blocks.")
-            for i, block in reversed(list(enumerate(blocks))):
-                _logger.info(f"Checking next possible low hash {block['verboseData']['hash']}")
-                if block['verboseData']['hash'] != low_hash:
-                    low_hash = block_hashes[i]
-                    break
-            headers_processed += len(blocks)
-            _logger.info(f'Processed {headers_processed} headers so far.')
             for i in range(len(blocks)):
                 block = blocks[i]
                 block_hash = block_hashes[i]
-                _logger.info(f"Block hash: {block_hash}, isHeaderOnly: {block['verboseData'].get('isHeaderOnly', True)}")
-                if block["verboseData"].get("isHeaderOnly", True) == False:
+                _logger.info(f"Block hash: {block_hash}, isHeaderOnly: {block['verboseData']['isHeaderOnly']}")
+                if block["verboseData"]['isHeaderOnly'] == False:
                     found = True
                     start_block = block
                     start_hash = block_hash
                     _logger.info(f"Found start block: {start_block['hash']}")
+            headers_processed += len(blocks)
+            _logger.info(f'Processed {headers_processed} headers so far.')
+            used_low_hashes.append(low_hash)
+            for i, block in reversed(list(enumerate(blocks))):
+                _logger.info(f"Checking next possible low hash {block['verboseData']['hash']}")
+                if block['verboseData']['hash'] != low_hash:
+                    hash_used = False
+                    for used_low_hash in used_low_hashes:
+                        if used_low_hash == block['verboseData']['hash']:
+                            hash_used = True
+                    if hash_used == False:
+                        low_hash = block['verboseData']['hash']
+                        break
+        used_low_hashes = []
 
     batch_processing_str = os.getenv('BATCH_PROCESSING', 'False')  # Default to 'False' if not set
     batch_processing = batch_processing_str.lower() in ['true', '1', 't', 'y', 'yes']
