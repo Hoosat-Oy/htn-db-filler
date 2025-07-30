@@ -106,7 +106,7 @@ class BlocksProcessor(object):
                                                  "includeTransactions": True,
                                                  "includeBlocks": True
                                              },
-                                             timeout=60)
+                                             timeout=10)
             # go through each block and yield
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             _logger.info(f'Received {len(block_hashes)} blocks from getBlocksResponse')

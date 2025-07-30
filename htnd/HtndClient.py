@@ -30,7 +30,7 @@ class HtndClient(object):
         except Exception as exc:
             return False
 
-    async def request(self, command, params=None, timeout=60, retry=0):
+    async def request(self, command, params=None, timeout=10, retry=0):
         for i in range(1 + retry):
             try:
                 with HtndThread(self.htnd_host, self.htnd_port) as t:

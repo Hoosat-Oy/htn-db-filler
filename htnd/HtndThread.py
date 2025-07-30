@@ -54,7 +54,7 @@ class HtndThread(object):
     def __exit__(self, *args):
         self.__closing = True
 
-    async def request(self, command, params=None, wait_for_response=True, timeout=60, retry=3):
+    async def request(self, command, params=None, wait_for_response=True, timeout=10, retry=3):
         if wait_for_response:
             attempt = 0
             retry_delay = 30
@@ -63,6 +63,7 @@ class HtndThread(object):
                     async for resp in self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout):
                         self.__queue.put_nowait("done")
                         return json_format.MessageToDict(resp)
+                    printf("Retrying previous call")
                 except grpc.aio._call.AioRpcError as e:
                     attempt += 1
                     if attempt >= retry:
