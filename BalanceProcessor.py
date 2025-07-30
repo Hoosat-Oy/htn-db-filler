@@ -82,18 +82,12 @@ class BalanceProcessor(object):
                 _logger.debug(f"Batch addresses: {batch_addresses}")
 
                 try:
-                    existing_balances = {
-                        b.script_public_key_address: b
-                        for b in session.query(Balance).filter(
-                            Balance.__table__.c.script_public_key_address.in_(batch_addresses)
-                        ).all()
-                    }
-
                     for address in batch_addresses:
                         try:
                             new_balance = await self._get_balance_from_rpc(address)
                             _logger.debug(f"Fetched balance {new_balance} for address {address}")
-                            existing_balance = existing_balances.get(address)
+                            existing_balance = session.query(Balance).filter_by(script_public_key_address=address).first()
+
 
                             if new_balance is not None and new_balance != 0:
                                 if existing_balance:
