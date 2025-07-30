@@ -121,7 +121,6 @@ class BlocksProcessor(object):
             if self.synced: 
                 low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
                 _logger.info(f'Waiting for the next blocks request.')
-                await asyncio.sleep(CLUSTER_WAIT_SECONDS)
                 _logger.info('New low hash block %s.', low_hash)
             else:
                 if len(block_hashes) > 1:
