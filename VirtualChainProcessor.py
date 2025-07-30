@@ -113,7 +113,7 @@ class VirtualChainProcessor(object):
             resp = await self.client.request("getVirtualSelectedParentChainFromBlockRequest",
                                             {"startHash": self.start_hash,
                                             "includeAcceptedTransactionIds": True},
-                                            timeout=10)
+                                            timeout=30)
             # if there is a response, add to queue and set new startpoint
             error = resp["getVirtualSelectedParentChainFromBlockResponse"].get("error", None)
             if error is None:
@@ -129,6 +129,7 @@ class VirtualChainProcessor(object):
                 _logger.debug('getVirtualSelectedParentChain error response:')
                 _logger.info(error["message"])
                 self.virtual_chain_response = None
+                time.sleep(10)
 
             if self.virtual_chain_response is not None:
                 await self.__update_transactions_in_db()
