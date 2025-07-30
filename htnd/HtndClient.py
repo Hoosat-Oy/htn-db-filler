@@ -30,10 +30,10 @@ class HtndClient(object):
         except Exception as exc:
             return False
 
-    async def request(self, command, params=None, timeout=10, retry=0):
+    async def request(self, command, params=None, timeout=10):
         try:
             with HtndThread(self.htnd_host, self.htnd_port) as t:
-                resp = await t.request(command, params, wait_for_response=True, timeout=timeout, retry=retry)
+                resp = await t.request(command, params, wait_for_response=True, timeout=timeout)
                 return resp
         except HtndCommunicationError:
             raise

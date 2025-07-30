@@ -54,21 +54,14 @@ class HtndThread(object):
     def __exit__(self, *args):
         self.__closing = True
 
-    async def request(self, command, params=None, wait_for_response=True, timeout=10, retry=3):
+    async def request(self, command, params=None, wait_for_response=True, timeout=10):
         if wait_for_response:
-            attempt = 0
-            while attempt < retry:
-                try:
-                    async for resp in self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout):
-                        self.__queue.put_nowait("done")
-                        return json_format.MessageToDict(resp)
-                except grpc.aio._call.AioRpcError as e:
-                    attempt += 1
-                    if attempt >= retry:
-                        raise HtndCommunicationError(f"Failed after {retry} attempts: {str(e)}")
-                    print(f"Encountered an error: {e}. Retrying {retry}")
-                except grpc.aio._call.AioRpcError as e:
-                    raise HtndCommunicationError(str(e))
+            try:
+                async for resp in self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout):
+                    self.__queue.put_nowait("done")
+                    return json_format.MessageToDict(resp)
+            except grpc.aio._call.AioRpcError as e:
+                raise HtndCommunicationError(str(e))
         else:
             try:
                 await self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout)
