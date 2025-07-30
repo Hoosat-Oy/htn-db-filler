@@ -113,7 +113,7 @@ async def main():
                     found = True
                     start_block = block
                     start_hash = block_hash
-                    _logger.info(f"Found start block: {start_block['hash']}")
+                    _logger.info(f"Found start block: {start_hash}")
             headers_processed += len(blocks)
             _logger.info(f'Processed {headers_processed} headers so far.')
             used_low_hashes.append(low_hash)
