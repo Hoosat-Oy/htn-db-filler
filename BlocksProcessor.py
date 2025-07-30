@@ -109,7 +109,6 @@ class BlocksProcessor(object):
                                                 },
                                                 timeout=30)
                 # go through each block and yield
-                _logger.info(f"{resp}")
                 if resp != None:
                     block_response = resp.get("getBlocksResponse", None)
                     if block_response != None:
