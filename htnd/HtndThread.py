@@ -57,7 +57,6 @@ class HtndThread(object):
     async def request(self, command, params=None, wait_for_response=True, timeout=10, retry=3):
         if wait_for_response:
             attempt = 0
-            retry_delay = 5
             while attempt < retry:
                 try:
                     async for resp in self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout):
@@ -67,8 +66,7 @@ class HtndThread(object):
                     attempt += 1
                     if attempt >= retry:
                         raise HtndCommunicationError(f"Failed after {retry} attempts: {str(e)}")
-                    print(f"Encountered an error: {e}. Retrying in {retry_delay} seconds...")
-                    time.sleep(retry_delay)
+                    print(f"Encountered an error: {e}. Retrying {retry}")
                 except grpc.aio._call.AioRpcError as e:
                     raise HtndCommunicationError(str(e))
         else:

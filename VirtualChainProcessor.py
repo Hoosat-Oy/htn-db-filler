@@ -26,7 +26,7 @@ class VirtualChainProcessor(object):
         self.virtual_chain_response = None
         self.start_hash = start_hash
         self.client = client
-        self.start_block = None
+        self.start_block = start_block
 
     async def set_start_block(self, block, block_hash):
         self.start_block = block
@@ -98,7 +98,7 @@ class VirtualChainProcessor(object):
                 _logger.info(f'Setting new start point {last_known_chain_block} for VCP')
                 KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
                 self.start_hash = last_known_chain_block
-                time.sleep(5)
+                time.sleep(10)
             
             # Clear the current response
             self.virtual_chain_response = None

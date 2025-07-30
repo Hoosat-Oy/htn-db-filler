@@ -31,18 +31,14 @@ class HtndClient(object):
             return False
 
     async def request(self, command, params=None, timeout=10, retry=0):
-        for i in range(1 + retry):
-            try:
-                with HtndThread(self.htnd_host, self.htnd_port) as t:
-                    resp = await t.request(command, params, wait_for_response=True, timeout=timeout)
-                    return resp
-            except HtndCommunicationError:
-                if i == retry:
-                    raise
-                else:
-                    time.sleep(0.1)
-            except Exception:
-                raise
+        try:
+            with HtndThread(self.htnd_host, self.htnd_port) as t:
+                resp = await t.request(command, params, wait_for_response=True, timeout=timeout, retry=retry)
+                return resp
+        except HtndCommunicationError:
+            raise
+        except Exception:
+            raise
 
     async def notify(self, command, params, callback):
         t = HtndThread(self.htnd_host, self.htnd_port, async_thread=True)
