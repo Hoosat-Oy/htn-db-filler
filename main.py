@@ -101,6 +101,7 @@ async def main():
             # go through each block and yield
             block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
             blocks = resp["getBlocksResponse"].get("blocks", [])
+            _logger.info(f"Current low hash: {low_hash}, found {len(blocks)} blocks.")
             for i, block in reversed(list(enumerate(blocks))):
                 if block['verboseData']['hash'] != low_hash:
                     low_hash = block_hashes[i]
