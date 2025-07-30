@@ -103,7 +103,7 @@ async def main():
             blocks = resp["getBlocksResponse"].get("blocks", [])
             _logger.info(f"Current low hash: {low_hash}, found {len(blocks)} blocks.")
             for i, block in reversed(list(enumerate(blocks))):
-                _logger.info(f"Checking next possible low hash {block['verboseData']['hash']}"
+                _logger.info(f"Checking next possible low hash {block['verboseData']['hash']}")
                 if block['verboseData']['hash'] != low_hash:
                     low_hash = block_hashes[i]
             headers_processed += len(blocks)
