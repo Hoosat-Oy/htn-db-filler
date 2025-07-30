@@ -57,7 +57,7 @@ class HtndThread(object):
     async def request(self, command, params=None, wait_for_response=True, timeout=10, retry=3):
         if wait_for_response:
             attempt = 0
-            retry_delay = 30
+            retry_delay = 5
             while attempt < retry:
                 try:
                     async for resp in self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout):
