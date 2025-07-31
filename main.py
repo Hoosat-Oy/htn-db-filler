@@ -4,6 +4,7 @@ import os
 import threading
 import sys
 import time
+import cProfile
 
 from BlocksProcessor import BlocksProcessor
 from TxAddrMappingUpdater import TxAddrMappingUpdater
@@ -152,6 +153,7 @@ async def main():
 
 
 if __name__ == '__main__':
+    cProfile.run("main()", "profile_output.prof")
     tx_addr_mapping_updater = TxAddrMappingUpdater()
 
 
