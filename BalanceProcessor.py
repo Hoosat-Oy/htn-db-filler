@@ -40,13 +40,14 @@ class BalanceProcessor(object):
     async def update_all_balances(self):
         with session_maker() as session:
             try:
+                from sqlalchemy import text
                 query = session.execute(
-                    """
+                    text("""
                     SELECT DISTINCT script_public_key_address 
                     FROM transactions_outputs 
                     WHERE script_public_key_address IS NOT NULL 
                     ORDER BY script_public_key_address
-                    """
+                    """)
                 )
 
                 addresses = [row[0] for row in query.fetchall()]
@@ -59,7 +60,7 @@ class BalanceProcessor(object):
 
                 
                 await self.update_balance_from_rpc(addresses, 10)
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
 
             except Exception as e:
                 _logger.error(f"Error updating balances: {e}")
