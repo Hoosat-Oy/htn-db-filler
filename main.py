@@ -102,32 +102,33 @@ async def main():
                                              },
                                              timeout=60)
             # go through each block and yield
-            block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
-            blocks = resp["getBlocksResponse"].get("blocks", [])
-            _logger.info(f"Current low hash: {low_hash}, found {len(blocks)} blocks.")
-            for i in range(len(blocks)):
-                block = blocks[i]
-                block_hash = block_hashes[i]
-                isHeaderOnly = block["verboseData"].get('isHeaderOnly')
-                _logger.info(f"Block hash: {block_hash}, isHeaderOnly: {isHeaderOnly}")
-                if isHeaderOnly != True:
-                    found = True
-                    start_block = block
-                    start_hash = block_hash
-                    _logger.info(f"Found start block: {start_hash}")
-            headers_processed += len(blocks)
-            _logger.info(f'Processed {headers_processed} headers so far.')
-            used_low_hashes.append(low_hash)
-            for i, block in reversed(list(enumerate(blocks))):
-                _logger.info(f"Checking next possible low hash {block['verboseData']['hash']}")
-                if block['verboseData']['hash'] != low_hash:
-                    hash_used = False
-                    for used_low_hash in used_low_hashes:
-                        if used_low_hash == block['verboseData']['hash']:
-                            hash_used = True
-                    if hash_used == False:
-                        low_hash = block['verboseData']['hash']
-                        break
+            if resp is not None:
+                block_hashes = resp["getBlocksResponse"].get("blockHashes", [])
+                blocks = resp["getBlocksResponse"].get("blocks", [])
+                _logger.info(f"Current low hash: {low_hash}, found {len(blocks)} blocks.")
+                for i in range(len(blocks)):
+                    block = blocks[i]
+                    block_hash = block_hashes[i]
+                    isHeaderOnly = block["verboseData"].get('isHeaderOnly')
+                    _logger.info(f"Block hash: {block_hash}, isHeaderOnly: {isHeaderOnly}")
+                    if isHeaderOnly != True:
+                        found = True
+                        start_block = block
+                        start_hash = block_hash
+                        _logger.info(f"Found start block: {start_hash}")
+                headers_processed += len(blocks)
+                _logger.info(f'Processed {headers_processed} headers so far.')
+                used_low_hashes.append(low_hash)
+                for i, block in reversed(list(enumerate(blocks))):
+                    _logger.info(f"Checking next possible low hash {block['verboseData']['hash']}")
+                    if block['verboseData']['hash'] != low_hash:
+                        hash_used = False
+                        for used_low_hash in used_low_hashes:
+                            if used_low_hash == block['verboseData']['hash']:
+                                hash_used = True
+                        if hash_used == False:
+                            low_hash = block['verboseData']['hash']
+                            break
         used_low_hashes = []
 
     batch_processing_str = os.getenv('BATCH_PROCESSING', 'False')  # Default to 'False' if not set

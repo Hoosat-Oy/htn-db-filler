@@ -54,7 +54,7 @@ class HtndThread(object):
     def __exit__(self, *args):
         self.__closing = True
 
-    async def request(self, command, params=None, wait_for_response=True, timeout=10):
+    async def request(self, command, params=None, wait_for_response=False, timeout=10):
         if wait_for_response:
             try:
                 async for resp in self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout):
