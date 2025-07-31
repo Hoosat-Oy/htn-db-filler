@@ -103,7 +103,7 @@ class VirtualChainProcessor(object):
                     _logger.info(f'Setting new start point {last_known_chain_block} for VCP')
                     KeyValueStore.set("vspc_last_start_hash", last_known_chain_block)
                     self.start_hash = last_known_chain_block
-                    await asyncio.sleep(10)
+                    await asyncio.sleep(30)
 
 
     async def yield_to_database(self):

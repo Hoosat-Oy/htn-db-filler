@@ -21,7 +21,7 @@ _logger = logging.getLogger(__name__)
 
 # For 1 BPS
 CLUSTER_SIZE = 50
-CLUSTER_WAIT_SECONDS = 10
+CLUSTER_WAIT_SECONDS = 30
 
 B_TREE_SIZE = 2500
 
@@ -124,6 +124,7 @@ class BlocksProcessor(object):
                             yield blockHash, blocks[i]
                         if self.synced: 
                             low_hash = daginfo["getBlockDagInfoResponse"]["tipHashes"][0]
+                            self.synced = False
                             _logger.info(f'Waiting for the next blocks request.')
                             await asyncio.sleep(CLUSTER_WAIT_SECONDS)
                             _logger.info('New low hash block %s.', low_hash)
@@ -131,11 +132,6 @@ class BlocksProcessor(object):
                             if len(block_hashes) > 1:
                                 low_hash = block_hashes[len(block_hashes) - 1]
                             _logger.info('New low hash block %s.', low_hash)
-                            await asyncio.sleep(1)
-                else: 
-                    await asyncio.sleep(10)
-            else: 
-                await asyncio.sleep(10)
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
