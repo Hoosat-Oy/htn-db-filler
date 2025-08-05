@@ -136,10 +136,18 @@ async def main():
 
     env_enable_balance_str = os.getenv('BALANCE_ENABLED', 'False')
     env_enable_balance = env_enable_balance_str.lower() in ['true', '1', 't', 'y', 'yes']
-    env_update_balance_on_boot = os.getenv('UPDATE_BALANCE_ON_BOOT', False)
+    env_update_balance_on_boot_str = os.getenv('UPDATE_BALANCE_ON_BOOT', 'False')
+    env_update_balance_on_boot = env_update_balance_on_boot_str.lower() in ['true', '1', 't', 'y', 'yes']
     bap = BalanceProcessor(client)
     if env_update_balance_on_boot is not False: 
         await bap.update_all_balances()
+    env_update_balance_only_str = os.getenv('UPDATE_BALANCE_ONLY', 'False')
+    env_update_balance_only = env_update_balance_only_str.lower() in ['true', '1', 't', 'y', 'yes']
+    if env_update_balance_only is not False:
+        while True:
+            await bap.update_all_balances()
+            time.sleep(1800)
+
     # create instances of blocksprocessor and virtualchainprocessor
     vcp = VirtualChainProcessor(client, start_block, start_hash)
     bp = BlocksProcessor(client, vcp, bap, batch_processing, env_enable_balance)
