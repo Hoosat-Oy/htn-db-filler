@@ -20,8 +20,8 @@ _logger = logging.getLogger(__name__)
 # CLUSTER_WAIT_SECONDS = 1
 
 # For 1 BPS
-CLUSTER_SIZE = 50
-CLUSTER_WAIT_SECONDS = 30
+CLUSTER_SIZE = 5
+CLUSTER_WAIT_SECONDS = 15
 
 B_TREE_SIZE = 2500
 
@@ -132,6 +132,9 @@ class BlocksProcessor(object):
                             if len(block_hashes) > 1:
                                 low_hash = block_hashes[len(block_hashes) - 1]
                             _logger.info('New low hash block %s.', low_hash)
+                else:
+                    await asyncio.sleep(CLUSTER_WAIT_SECONDS * 2)
+                    raise RuntimeError("Forced crash: No valid response from getBlocksRequest")
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
