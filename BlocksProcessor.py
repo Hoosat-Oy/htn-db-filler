@@ -154,7 +154,8 @@ class BlocksProcessor(object):
                                                     hash=transaction["verboseData"]["hash"],
                                                     mass=transaction["verboseData"].get("mass"),
                                                     block_hash=[transaction["verboseData"]["blockHash"]],
-                                                    block_time=int(transaction["verboseData"]["blockTime"]))
+                                                    block_time=int(transaction["verboseData"]["blockTime"]),
+                                                    payload=transaction.get("payload"))
                         for index, out in enumerate(transaction.get("outputs", [])):
                             address = out["verboseData"]["scriptPublicKeyAddress"]
                             amount = out["amount"]
