@@ -149,13 +149,21 @@ class BlocksProcessor(object):
                     # Check, that the transaction isn't prepared yet. Otherwise ignore
                     if not self.is_tx_id_in_queue(tx_id):
                         # Add transaction
-                        self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
+                        if transaction["subnetworkId"] == "0300000000000000000000000000000000000000":
+                            self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
                                                     transaction_id=tx_id,
                                                     hash=transaction["verboseData"]["hash"],
                                                     mass=transaction["verboseData"].get("mass"),
                                                     block_hash=[transaction["verboseData"]["blockHash"]],
                                                     block_time=int(transaction["verboseData"]["blockTime"]),
                                                     payload=transaction.get("payload"))
+                        else:
+                            self.txs[tx_id] = Transaction(subnetwork_id=transaction["subnetworkId"],
+                                                    transaction_id=tx_id,
+                                                    hash=transaction["verboseData"]["hash"],
+                                                    mass=transaction["verboseData"].get("mass"),
+                                                    block_hash=[transaction["verboseData"]["blockHash"]],
+                                                    block_time=int(transaction["verboseData"]["blockTime"]))
                         for index, out in enumerate(transaction.get("outputs", [])):
                             address = out["verboseData"]["scriptPublicKeyAddress"]
                             amount = out["amount"]
