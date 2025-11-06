@@ -135,6 +135,7 @@ class BlocksProcessor(object):
                 else:
                     await asyncio.sleep(CLUSTER_WAIT_SECONDS * 2)
                     raise RuntimeError("Forced crash: No valid response from getBlocksRequest")
+            await asyncio.sleep(1)
 
     async def __add_tx_to_queue(self, block_hash, block):
         """
