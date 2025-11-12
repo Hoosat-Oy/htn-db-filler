@@ -60,13 +60,23 @@ class HtndThread(object):
                 async for resp in self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout):
                     self.__queue.put_nowait("done")
                     return json_format.MessageToDict(resp)
-            except grpc.aio._call.AioRpcError as e:
-                raise HtndCommunicationError(str(e))
+            except grpc.aio.AioRpcError as e:
+                if e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
+                    import logging
+                    logging.error(f"gRPC request timed out (DEADLINE_EXCEEDED) for command {command}. Params: {params}. Returning None.")
+                    return None
+                else:
+                    raise HtndCommunicationError(str(e))
         else:
             try:
                 await self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout)
-            except grpc.aio._call.AioRpcError as e:
-                raise HtndCommunicationError(str(e))
+            except grpc.aio.AioRpcError as e:
+                if e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
+                    import logging
+                    logging.error(f"gRPC request timed out (DEADLINE_EXCEEDED) for command {command}. Params: {params}. Returning None.")
+                    return None
+                else:
+                    raise HtndCommunicationError(str(e))
 
     async def notify(self, command, params=None, callback_func=None):
         try:
