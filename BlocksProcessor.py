@@ -71,7 +71,8 @@ class BlocksProcessor(object):
                 else: 
                     await self.batch_commit_txs()
                 asyncio.create_task(self.handle_blocks_committed())
-                if self.env_enable_balance != False and self.synced:
+                # Update balances whenever a cluster is committed, not only at tip
+                if self.env_enable_balance != False:
                     asyncio.create_task(self.commit_balances(self.addresses_to_update))
                     
 
