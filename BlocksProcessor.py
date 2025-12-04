@@ -79,6 +79,8 @@ class BlocksProcessor(object):
         try: 
             unique_addresses = list(set(addresses))
             await self.balance.update_balance_from_rpc(unique_addresses)
+            # After committing balances for the cluster, clear for next round
+            self.addresses_to_update = []
         except SQLAlchemyError as e:
             _logger.error(f'Error updating balances for addresses {unique_addresses}: {e}')
         
@@ -141,7 +143,7 @@ class BlocksProcessor(object):
         """
         Adds block's transactions to queue. This is only prepartion without commit!
         """
-        self.addresses_to_update = []
+        # Accumulate addresses across the whole cluster; do not reset here.
         if block.get("transactions") is not None:
             for transaction in block["transactions"]:
                 if transaction.get("verboseData") is not None:
