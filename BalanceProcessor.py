@@ -68,15 +68,28 @@ class BalanceProcessor(object):
 
 
     async def update_balance_from_rpc(self, addresses: List[str], batch_size: int = 10) -> None:
-        
+        _logger.info(
+            f"update_balance_from_rpc: received "
+            f"{len(addresses) if isinstance(addresses, list) else 'non-list'} "
+            f"addresses, batch_size={batch_size}"
+        )
+
         if not isinstance(addresses, list):
             _logger.error(f"Expected a list of addresses, got {type(addresses)}: {addresses}")
+            return
+        if len(addresses) == 0:
+            _logger.info("update_balance_from_rpc: no addresses to update, skipping.")
             return
         if not all(isinstance(addr, str) for addr in addresses):
             _logger.error(f"Invalid address types in batch: {[type(addr) for addr in addresses]}")
             return
 
         failed_addresses = []
+        created_count = 0
+        updated_count = 0
+        deleted_count = 0
+        processed_count = 0
+        skipped_count = 0
         with session_maker() as session:
             for i in range(0, len(addresses), batch_size):
                 batch_addresses = addresses[i:i + batch_size]
@@ -95,6 +108,7 @@ class BalanceProcessor(object):
                                 if existing_balance:
                                     existing_balance.balance = new_balance
                                     _logger.debug(f"Updated balance for address {address} to {new_balance}")
+                                    updated_count += 1
                                 else:
                                     new_record = Balance(
                                         script_public_key_address=address,
@@ -102,10 +116,15 @@ class BalanceProcessor(object):
                                     )
                                     session.add(new_record)
                                     _logger.debug(f"Created new balance record for address {address} with balance {new_balance}")
+                                    created_count += 1
                             else:
                                 if existing_balance:
                                     session.delete(existing_balance)
                                     _logger.debug(f"Deleted balance record for address {address} (balance is 0 or None)")
+                                    deleted_count += 1
+                                else:
+                                    skipped_count += 1
+                            processed_count += 1
                         except Exception as e:
                             _logger.error(f"Error processing address {address} in batch {i // batch_size + 1}: {e}")
                             failed_addresses.append(address)
@@ -128,3 +147,9 @@ class BalanceProcessor(object):
             _logger.warning(f"Failed to process {len(failed_addresses)} addresses: {failed_addresses[:10]}{'...' if len(failed_addresses) > 10 else ''}")
         else:
             _logger.info(f"Successfully processed all {len(addresses)} addresses")
+
+        _logger.info(
+            f"update_balance_from_rpc summary: processed={processed_count}, "
+            f"created={created_count}, updated={updated_count}, deleted={deleted_count}, "
+            f"skipped={skipped_count}, failed={len(failed_addresses)}"
+        )
