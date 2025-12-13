@@ -104,7 +104,14 @@ class BalanceProcessor(object):
                             existing_balance = session.query(Balance).filter_by(script_public_key_address=address).first()
 
 
-                            if new_balance is not None and new_balance != 0:
+                            if new_balance is None:
+                                if existing_balance:
+                                    session.delete(existing_balance)
+                                    _logger.debug(f"Deleted balance record for address {address} (balance is None)")
+                                    deleted_count += 1
+                                else:
+                                    skipped_count += 1
+                            else:
                                 if existing_balance:
                                     existing_balance.balance = new_balance
                                     _logger.debug(f"Updated balance for address {address} to {new_balance}")
@@ -117,13 +124,6 @@ class BalanceProcessor(object):
                                     session.add(new_record)
                                     _logger.debug(f"Created new balance record for address {address} with balance {new_balance}")
                                     created_count += 1
-                            else:
-                                if existing_balance:
-                                    session.delete(existing_balance)
-                                    _logger.debug(f"Deleted balance record for address {address} (balance is 0 or None)")
-                                    deleted_count += 1
-                                else:
-                                    skipped_count += 1
                             processed_count += 1
                         except Exception as e:
                             _logger.error(f"Error processing address {address} in batch {i // batch_size + 1}: {e}")

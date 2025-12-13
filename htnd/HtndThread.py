@@ -64,16 +64,30 @@ class HtndThread(object):
                 if e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
                     import logging
                     logging.error(f"gRPC request timed out (DEADLINE_EXCEEDED) for command {command}. Params: {params}. Returning None.")
+                    # Unblock generator to cleanly finish
+                    try:
+                        self.__queue.put_nowait("done")
+                    except Exception:
+                        pass
                     return None
                 else:
                     raise HtndCommunicationError(str(e))
         else:
             try:
                 await self.stub.MessageStream(self.yield_cmd(command, params), timeout=timeout)
+                # Unblock generator even when not waiting for response
+                try:
+                    self.__queue.put_nowait("done")
+                except Exception:
+                    pass
             except grpc.aio.AioRpcError as e:
                 if e.code() == grpc.StatusCode.DEADLINE_EXCEEDED:
                     import logging
                     logging.error(f"gRPC request timed out (DEADLINE_EXCEEDED) for command {command}. Params: {params}. Returning None.")
+                    try:
+                        self.__queue.put_nowait("done")
+                    except Exception:
+                        pass
                     return None
                 else:
                     raise HtndCommunicationError(str(e))

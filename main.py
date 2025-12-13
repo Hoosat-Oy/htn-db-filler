@@ -146,7 +146,8 @@ async def main():
     if env_update_balance_only is not False:
         while True:
             await bap.update_all_balances()
-            time.sleep(1800)
+            # Use non-blocking sleep inside async context
+            await asyncio.sleep(1800)
 
     # create instances of blocksprocessor and virtualchainprocessor
     vcp = VirtualChainProcessor(client, start_block, start_hash)

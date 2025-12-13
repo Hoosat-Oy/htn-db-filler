@@ -35,5 +35,6 @@ class HtndMultiClient(object):
 
     async def notify(self, command, params, callback):
         htnd = self.__get_htnd()
-        if htnd is not None: 
-            return self.notify(command, params, callback)
+        if htnd is not None:
+            # Delegate to the selected client, avoid recursive self.notify
+            return await htnd.notify(command, params, callback)
