@@ -91,10 +91,21 @@ class BalanceProcessor(object):
         if not isinstance(addresses, list):
             _logger.error(f"enqueue_balance_updates: expected list, got {type(addresses)}")
             return
+        added = 0
+        ignored_duplicates = 0
+        invalid = 0
         with self._pending_lock:
+            before = len(self._pending_addrs)
             for addr in addresses:
-                if isinstance(addr, str) and addr:
-                    self._pending_addrs.add(addr)
+                if not isinstance(addr, str) or not addr:
+                    invalid += 1
+                    continue
+                if addr in self._pending_addrs:
+                    ignored_duplicates += 1
+                    continue
+                self._pending_addrs.add(addr)
+                added += 1
+            after = len(self._pending_addrs)
         self._has_work.set()
 
         # Ensure worker is running (in case loop was attached after init)
@@ -106,7 +117,9 @@ class BalanceProcessor(object):
         if now - self._last_enqueue_log_ts >= 5:
             with self._pending_lock:
                 pending = len(self._pending_addrs)
-            _logger.info(f"BalanceProcessor: queued balances (pending={pending})")
+            _logger.info(
+                f"BalanceProcessor: queued balances (pending={pending}, added={added}, dup={ignored_duplicates}, invalid={invalid})"
+            )
             self._last_enqueue_log_ts = now
 
     def _drain_pending_batch(self, max_items: int) -> list[str]:
