@@ -1,5 +1,6 @@
 
 import asyncio
+import concurrent.futures
 import logging
 import os
 import threading
@@ -16,6 +17,15 @@ class BalanceProcessor(object):
     def __init__(self, client):
         self.client = client
 
+        # All grpc.aio operations must run on a single running asyncio loop.
+        # We capture the loop (when constructed from within async code) and schedule
+        # balance RPC coroutines onto it from the background thread.
+        self._loop: asyncio.AbstractEventLoop | None = None
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._loop = None
+
         self._pause_seconds = float(os.getenv("BALANCE_PAUSE_SECONDS", "0.05"))
         self._batch_size = int(os.getenv("BALANCE_BATCH_SIZE", "25"))
         self._threaded = os.getenv("BALANCE_THREADED", "True").lower() in ["true", "1", "t", "y", "yes"]
@@ -27,7 +37,14 @@ class BalanceProcessor(object):
         self._worker_thread: threading.Thread | None = None
 
         if self._threaded:
-            self.start_worker()
+            if self._loop is None:
+                _logger.warning(
+                    "BALANCE_THREADED is enabled but no running asyncio loop was found; "
+                    "balance worker will not start (falling back to async updates)."
+                )
+                self._threaded = False
+            else:
+                self.start_worker()
 
     def start_worker(self) -> None:
         if self._worker_thread and self._worker_thread.is_alive():
@@ -70,10 +87,12 @@ class BalanceProcessor(object):
         This intentionally runs in a separate OS thread because SQLAlchemy calls are
         synchronous and would otherwise block the asyncio event loop.
         """
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            while not self._stop.is_set():
+        loop = self._loop
+        if loop is None:
+            _logger.error("Balance worker started without an asyncio loop; exiting.")
+            return
+
+        while not self._stop.is_set():
                 self._has_work.wait(timeout=1.0)
                 if self._stop.is_set():
                     break
@@ -88,7 +107,8 @@ class BalanceProcessor(object):
                         if self._stop.is_set():
                             break
                         try:
-                            new_balance = loop.run_until_complete(self._get_balance_from_rpc(address))
+                            fut = asyncio.run_coroutine_threadsafe(self._get_balance_from_rpc(address), loop)
+                            new_balance = fut.result(timeout=75)
                             _logger.debug(f"Fetched balance {new_balance} for address {address}")
 
                             existing_balance = session.query(Balance).filter_by(script_public_key_address=address).first()
@@ -101,6 +121,9 @@ class BalanceProcessor(object):
                                 else:
                                     session.add(Balance(script_public_key_address=address, balance=new_balance))
 
+                        except concurrent.futures.TimeoutError:
+                            _logger.error(f"Balance RPC timed out for address {address}")
+                            failed_addresses.append(address)
                         except Exception as e:
                             _logger.error(f"Balance worker error for address {address}: {e}")
                             failed_addresses.append(address)
@@ -119,12 +142,7 @@ class BalanceProcessor(object):
                 if failed_addresses:
                     # Re-queue failures for retry
                     self.enqueue_balance_updates(failed_addresses)
-        finally:
-            try:
-                loop.stop()
-            except Exception:
-                pass
-            loop.close()
+
 
     async def _get_balance_from_rpc(self, address):
         """
