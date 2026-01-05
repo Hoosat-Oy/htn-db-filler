@@ -28,6 +28,9 @@ class BalanceProcessor(object):
 
         self._pause_seconds = float(os.getenv("BALANCE_PAUSE_SECONDS", "0.05"))
         self._batch_size = int(os.getenv("BALANCE_BATCH_SIZE", "25"))
+        self._commit_every = int(os.getenv("BALANCE_COMMIT_EVERY", "1"))
+        self._deadlock_retries = int(os.getenv("BALANCE_DEADLOCK_RETRIES", "5"))
+        self._deadlock_backoff_seconds = float(os.getenv("BALANCE_DEADLOCK_BACKOFF_SECONDS", "0.2"))
         self._threaded = os.getenv("BALANCE_THREADED", "True").lower() in ["true", "1", "t", "y", "yes"]
 
         self._pending_lock = threading.Lock()
@@ -48,8 +51,15 @@ class BalanceProcessor(object):
                 self.start_worker()
 
         _logger.info(
-            f"BalanceProcessor: threaded={self._threaded}, pause={self._pause_seconds}s, batch_size={self._batch_size}"
+            f"BalanceProcessor: threaded={self._threaded}, pause={self._pause_seconds}s, "
+            f"batch_size={self._batch_size}, commit_every={self._commit_every}"
         )
+
+    @staticmethod
+    def _is_deadlock_error(exc: Exception) -> bool:
+        # psycopg2 sets pgcode on the underlying exception.
+        pgcode = getattr(getattr(exc, "orig", None), "pgcode", None)
+        return pgcode in {"40P01", "40001"}  # deadlock_detected, serialization_failure
 
     def attach_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         """Attach an asyncio loop after construction and start worker if enabled."""
@@ -129,10 +139,13 @@ class BalanceProcessor(object):
                 if not batch:
                     continue
 
+                # Deterministic ordering helps avoid deadlocks across concurrent workers/processes.
+                batch = sorted(batch)
                 _logger.info(f"BalanceProcessor: processing batch size={len(batch)}")
 
                 failed_addresses: list[str] = []
                 with session_maker() as session:
+                    since_commit = 0
                     for address in batch:
                         if self._stop.is_set():
                             break
@@ -140,15 +153,42 @@ class BalanceProcessor(object):
                             fut = asyncio.run_coroutine_threadsafe(self._get_balance_from_rpc(address), loop)
                             new_balance = fut.result(timeout=75)
 
-                            existing_balance = session.query(Balance).filter_by(script_public_key_address=address).first()
-                            if new_balance is None:
-                                if existing_balance:
-                                    session.delete(existing_balance)
-                            else:
-                                if existing_balance:
-                                    existing_balance.balance = new_balance
+                            # Avoid query-triggered autoflush mid-loop.
+                            with session.no_autoflush:
+                                existing_balance = (
+                                    session.query(Balance)
+                                    .filter_by(script_public_key_address=address)
+                                    .first()
+                                )
+                                if new_balance is None:
+                                    if existing_balance:
+                                        session.delete(existing_balance)
                                 else:
-                                    session.add(Balance(script_public_key_address=address, balance=new_balance))
+                                    if existing_balance:
+                                        existing_balance.balance = new_balance
+                                    else:
+                                        session.add(Balance(script_public_key_address=address, balance=new_balance))
+
+                            since_commit += 1
+                            if self._commit_every > 0 and since_commit >= self._commit_every:
+                                committed = False
+                                for attempt in range(1, self._deadlock_retries + 1):
+                                    try:
+                                        session.commit()
+                                        committed = True
+                                        since_commit = 0
+                                        break
+                                    except SQLAlchemyError as e:
+                                        session.rollback()
+                                        if self._is_deadlock_error(e):
+                                            _logger.warning(
+                                                f"BalanceProcessor: deadlock/serialization on commit (attempt {attempt}/{self._deadlock_retries})"
+                                            )
+                                            time.sleep(self._deadlock_backoff_seconds * attempt)
+                                            continue
+                                        raise
+                                if not committed:
+                                    failed_addresses.append(address)
 
                         except concurrent.futures.TimeoutError:
                             _logger.error(f"Balance RPC timed out for address {address}")
@@ -161,7 +201,25 @@ class BalanceProcessor(object):
                             time.sleep(self._pause_seconds)
 
                     try:
-                        session.commit()
+                        # Final commit for any remaining changes in this session.
+                        if self._commit_every <= 0 or since_commit > 0:
+                            committed = False
+                            for attempt in range(1, self._deadlock_retries + 1):
+                                try:
+                                    session.commit()
+                                    committed = True
+                                    break
+                                except SQLAlchemyError as e:
+                                    session.rollback()
+                                    if self._is_deadlock_error(e):
+                                        _logger.warning(
+                                            f"BalanceProcessor: deadlock/serialization on final commit (attempt {attempt}/{self._deadlock_retries})"
+                                        )
+                                        time.sleep(self._deadlock_backoff_seconds * attempt)
+                                        continue
+                                    raise
+                            if not committed:
+                                failed_addresses = list(set(failed_addresses + batch))
                     except Exception as e:
                         session.rollback()
                         _logger.error(f"Balance worker DB commit error: {e}")
