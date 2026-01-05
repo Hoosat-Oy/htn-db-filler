@@ -73,14 +73,24 @@ class BlocksProcessor(object):
                 asyncio.create_task(self.handle_blocks_committed())
                 # Update balances whenever a cluster is committed, not only at tip
                 if self.env_enable_balance != False:
-                    asyncio.create_task(self.commit_balances(self.addresses_to_update))
+                    # Enqueue for background balance worker; do not block block processing
+                    self.commit_balances(self.addresses_to_update)
                     
 
-    async def commit_balances(self, addresses):
-        try: 
-            unique_addresses = list(set(addresses))
-            await self.balance.update_balance_from_rpc(unique_addresses)
-            # After committing balances for the cluster, clear for next round
+    def commit_balances(self, addresses):
+        try:
+            unique_addresses = list(set(addresses or []))
+            if not unique_addresses:
+                return
+
+            # Prefer threaded/batched background processing when available
+            if hasattr(self.balance, "enqueue_balance_updates"):
+                self.balance.enqueue_balance_updates(unique_addresses)
+            else:
+                # Best-effort fallback: run async updater in background
+                asyncio.create_task(self.balance.update_balance_from_rpc(unique_addresses))
+
+            # After enqueuing balances for the cluster, clear for next round
             self.addresses_to_update = []
         except SQLAlchemyError as e:
             _logger.error(f'Error updating balances for addresses {unique_addresses}: {e}')
