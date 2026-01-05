@@ -35,6 +35,7 @@ class BalanceProcessor(object):
         self._has_work = threading.Event()
         self._stop = threading.Event()
         self._worker_thread: threading.Thread | None = None
+        self._last_enqueue_log_ts = 0.0
 
         if self._threaded:
             if self._loop is None:
@@ -46,12 +47,26 @@ class BalanceProcessor(object):
             else:
                 self.start_worker()
 
+        _logger.info(
+            f"BalanceProcessor: threaded={self._threaded}, pause={self._pause_seconds}s, batch_size={self._batch_size}"
+        )
+
+    def attach_loop(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Attach an asyncio loop after construction and start worker if enabled."""
+        self._loop = loop
+        if self._threaded and (not self._worker_thread or not self._worker_thread.is_alive()):
+            self.start_worker()
+
     def start_worker(self) -> None:
         if self._worker_thread and self._worker_thread.is_alive():
+            return
+        if self._loop is None:
+            _logger.warning("BalanceProcessor worker not started: no asyncio loop attached")
             return
         self._stop.clear()
         self._worker_thread = threading.Thread(target=self._worker_loop, daemon=True, name="BalanceProcessor")
         self._worker_thread.start()
+        _logger.info("BalanceProcessor worker thread started")
 
     def stop_worker(self, join_timeout: float | None = 2.0) -> None:
         self._stop.set()
@@ -71,6 +86,18 @@ class BalanceProcessor(object):
                 if isinstance(addr, str) and addr:
                     self._pending_addrs.add(addr)
         self._has_work.set()
+
+        # Ensure worker is running (in case loop was attached after init)
+        if self._threaded and (not self._worker_thread or not self._worker_thread.is_alive()):
+            self.start_worker()
+
+        # Throttle noisy logs
+        now = time.time()
+        if now - self._last_enqueue_log_ts >= 5:
+            with self._pending_lock:
+                pending = len(self._pending_addrs)
+            _logger.info(f"BalanceProcessor: queued balances (pending={pending})")
+            self._last_enqueue_log_ts = now
 
     def _drain_pending_batch(self, max_items: int) -> list[str]:
         batch: list[str] = []
@@ -92,7 +119,8 @@ class BalanceProcessor(object):
             _logger.error("Balance worker started without an asyncio loop; exiting.")
             return
 
-        while not self._stop.is_set():
+        try:
+            while not self._stop.is_set():
                 self._has_work.wait(timeout=1.0)
                 if self._stop.is_set():
                     break
@@ -100,6 +128,8 @@ class BalanceProcessor(object):
                 batch = self._drain_pending_batch(self._batch_size)
                 if not batch:
                     continue
+
+                _logger.info(f"BalanceProcessor: processing batch size={len(batch)}")
 
                 failed_addresses: list[str] = []
                 with session_maker() as session:
@@ -109,7 +139,6 @@ class BalanceProcessor(object):
                         try:
                             fut = asyncio.run_coroutine_threadsafe(self._get_balance_from_rpc(address), loop)
                             new_balance = fut.result(timeout=75)
-                            _logger.debug(f"Fetched balance {new_balance} for address {address}")
 
                             existing_balance = session.query(Balance).filter_by(script_public_key_address=address).first()
                             if new_balance is None:
@@ -136,12 +165,16 @@ class BalanceProcessor(object):
                     except Exception as e:
                         session.rollback()
                         _logger.error(f"Balance worker DB commit error: {e}")
-                        # Re-queue the whole batch on commit failure
                         failed_addresses = list(set(failed_addresses + batch))
 
                 if failed_addresses:
-                    # Re-queue failures for retry
                     self.enqueue_balance_updates(failed_addresses)
+
+                with self._pending_lock:
+                    pending = len(self._pending_addrs)
+                _logger.info(f"BalanceProcessor: batch done (pending={pending}, failed={len(failed_addresses)})")
+        except Exception:
+            _logger.exception("BalanceProcessor worker crashed")
 
 
     async def _get_balance_from_rpc(self, address):

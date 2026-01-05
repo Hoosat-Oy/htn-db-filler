@@ -85,6 +85,7 @@ class BlocksProcessor(object):
 
             # Prefer threaded/batched background processing when available
             if hasattr(self.balance, "enqueue_balance_updates"):
+                _logger.info(f"Enqueueing {len(unique_addresses)} addresses for balance update")
                 self.balance.enqueue_balance_updates(unique_addresses)
             else:
                 # Best-effort fallback: run async updater in background
@@ -92,8 +93,8 @@ class BlocksProcessor(object):
 
             # After enqueuing balances for the cluster, clear for next round
             self.addresses_to_update = []
-        except SQLAlchemyError as e:
-            _logger.error(f'Error updating balances for addresses {unique_addresses}: {e}')
+        except Exception as e:
+            _logger.error(f'Error enqueueing balances for addresses {len(unique_addresses) if "unique_addresses" in locals() else "?"}: {e}')
         
 
     async def handle_blocks_committed(self):
